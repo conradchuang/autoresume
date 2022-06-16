@@ -7,7 +7,6 @@
 		"48": "icons/autoresume-48.png"
 	},
 	"permissions": [
-		"activeTab",
 		"downloads"
 	],
 	"browser_action": {
