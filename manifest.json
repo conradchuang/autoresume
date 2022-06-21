@@ -7,7 +7,9 @@
 		"48": "icons/autoresume-48.png"
 	},
 	"permissions": [
-		"downloads"
+		"downloads",
+		"alarms",
+		"storage"
 	],
 	"browser_action": {
 		"default_icon": "icons/autoresume-32.png",
@@ -15,7 +17,7 @@
 		"default_popup": "popup/choose_downloads.html"
 	},
 	"background": {
-		"persistent": true,
-		"scripts": ["background.js"]
+		"scripts": ["background.js"],
+		"persistent": false
 	}
 }
