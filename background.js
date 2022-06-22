@@ -87,16 +87,18 @@
     // Listen for download stopped/paused/failed events
     // and automatically resume if possible.
 
-    // If we add settings, we might want to automatically add
-    // new downloads to autoresume list.
-    /*
     browser.downloads.onCreated.addListener((dl) => {
         console.info("autoresume: download created: " + basename(dl.filename));
+        if (options.auto) {
+            autoresumeIds.push(dl.id);
+            browser.storage.local.set({autoresume:autoresumeIds});
+            reloadDownloads();
+        }
     });
-    */
 
-    // Assume that we will get an onChanged to "complete" state
-    // before a download gets erased
+    // Assuming that we will get an onChanged event to "complete" state
+    // before a download gets erased, we do not need to do anything
+    // at actual erasure.
     /*
     browser.downloads.onErased.addListener((dlId) => {
         // console.info("autoresume: download erased: " + dlId);
@@ -126,7 +128,7 @@
         console.info("autoresume: alarm");
         if (alarmInfo.name != "autoresume")
             return;
-        browser.downloads.query({}).then(function(dls) {
+        browser.downloads.search({}).then(function(dls) {
             for (let dlId of autoresumeIds) {
                 let dl = dls.find((d) => d.id == dlId &&
                                          dl.state != "interrupted" &&

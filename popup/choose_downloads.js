@@ -8,7 +8,6 @@
 
     function downloadClick(ev) {
         let el = ev.target;
-        // el.innerHTML = "Hello";
         let msg = {
             command: "update",
             selected: el.checked,
@@ -39,7 +38,7 @@
             checkbox.addEventListener("change", downloadClick);
             let label = document.createElement("label");
             let name = dl.filename.replace(/^.*[\\\/]/, '');
-            label.innerHTML = ' ' + name + ' (' + dl.state + ')';
+            label.textContent = ' ' + name + ' (' + dl.state + ')';
             let br = document.createElement("br");
             activeDownloads.appendChild(checkbox);
             activeDownloads.appendChild(label);
@@ -48,7 +47,7 @@
         }
         if (count == 0) {
             let p = document.createElement("p");
-            p.innerHTML = "No active downloads.";
+            p.textContent = "No active downloads.";
             // p.className = "autoresume";
             activeDownloads.appendChild(p);
         }
@@ -59,7 +58,6 @@
 
     function optionAutoClick(ev) {
         let el = ev.target;
-        // el.innerHTML = "Hello";
         let msg = {
             command: "option-auto",
             selected: el.checked,
