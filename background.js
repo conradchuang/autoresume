@@ -89,6 +89,7 @@
 
     browser.downloads.onCreated.addListener((dl) => {
         console.info("autoresume: download created: " + basename(dl.filename));
+        console.debug(dl);
         if (options.auto) {
             autoresumeIds.push(dl.id);
             browser.storage.local.set({autoresume:autoresumeIds});
@@ -110,6 +111,8 @@
     */
 
     browser.downloads.onChanged.addListener((dlDelta) => {
+        if (!dlDelta.state)
+            return;
         console.info("autoresume: download changed: " + dlDelta.id + ": " +
                     dlDelta.state.previous + " -> " + dlDelta.state.current);
         if (dlDelta.state.current == "complete") {
@@ -125,18 +128,18 @@
     });
 
     browser.alarms.onAlarm.addListener((alarmInfo) => {
-        console.info("autoresume: alarm");
+        console.debug("autoresume: alarm");
         if (alarmInfo.name != "autoresume")
             return;
         browser.downloads.search({}).then(function(dls) {
             for (let dlId of autoresumeIds) {
                 let dl = dls.find((d) => d.id == dlId &&
-                                         dl.state != "interrupted" &&
-                                         dl.canResume);
+                                         d.state == "interrupted" &&
+                                         d.canResume);
                 if (dl) {
                     console.debug("autoresume: resume: " +
                                   basename(dl.filename));
-                    dl.resume().then(onResume, onError);
+                    browser.downloads.resume(dl.id).then(onResume, onError);
                 }
             }
         });
