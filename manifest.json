@@ -9,7 +9,8 @@
 	"permissions": [
 		"downloads",
 		"alarms",
-		"storage"
+		"storage",
+		"notifications"
 	],
 	"browser_action": {
 		"default_icon": "icons/autoresume-32.png",

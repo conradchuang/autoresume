@@ -6,12 +6,13 @@
 
     // Use local storage so background script need not be persistent
     var autoresumeIds = [];
-    var options = {auto:true};
+    var options = {auto:true, notify:true};
     browser.storage.local.get({'autoresume':autoresumeIds,
                                'options':options}, function(result) {
         console.info("autoresume: restored state");
         autoresumeIds = result.autoresume;
-        options = result.options;
+        for (let opt in result.options)
+            options[opt] = result.options[opt];
     });
 
     function reloadDownloads() {
@@ -139,6 +140,17 @@
                 if (dl) {
                     console.debug("autoresume: resume: " +
                                   basename(dl.filename));
+                    if (options.notify) {
+                        let n = {type:"basic",
+                                 iconUrl:"icons/autoresume-96.png",
+                                 title:"Download Resumed",
+                                 message:"Download for " +
+                                         basename(dl.filename) +
+                                         " resumed at " +
+                                         new Date().toLocaleTimeString()};
+                        let nid = "Auto Resume Notification"
+                        browser.notifications.create(nid, n);
+                    }
                     browser.downloads.resume(dl.id).then(onResume, onError);
                 }
             }

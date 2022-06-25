@@ -54,12 +54,13 @@
 
         // Display option states
         document.getElementById("option-auto").checked = options.auto;
+        document.getElementById("option-notify").checked = options.notify;
     }
 
-    function optionAutoClick(ev) {
+    function optionClick(ev) {
         let el = ev.target;
         let msg = {
-            command: "option-auto",
+            command: el.id,
             selected: el.checked,
         };
         browser.runtime.sendMessage(msg);
@@ -68,7 +69,9 @@
     }
 
     document.getElementById("option-auto").addEventListener("change",
-                                                            optionAutoClick);
+                                                            optionClick);
+    document.getElementById("option-notify").addEventListener("change",
+                                                              optionClick);
     browser.runtime.onMessage.addListener((msg) => {
         console.info("autoresume: popup received command: " + msg.command);
         console.debug(msg);
