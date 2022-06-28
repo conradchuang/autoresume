@@ -4,16 +4,9 @@
 
 (function() {
 
-    // Use local storage so background script need not be persistent
+    console.info("autoresume: init background script");
     var autoresumeIds = [];
-    var options = {auto:true, notify:true};
-    browser.storage.local.get({'autoresume':autoresumeIds,
-                               'options':options}, function(result) {
-        console.info("autoresume: restored state");
-        autoresumeIds = result.autoresume;
-        for (let opt in result.options)
-            options[opt] = result.options[opt];
-    });
+    var options = {auto:true, notify:false};
 
     function reloadDownloads() {
         let query = {"orderBy": ["-startTime"]};
@@ -44,11 +37,11 @@
     }
 
     function clearCompleteDownloads() {
-        browser.downloads.search({}).then(function(dls) {
+        browser.downloads.search({}).then((dls) => {
             let changed = false;
             for (let dl of dls) {
                 if (dl.state == "complete") {
-                    let n = autoresumeIds.indexOf(dl.id);
+                    let n = autoresumeIds.indexOf(dl.id.toString());
                     if (n != -1) {
                         autoresumeIds.splice(n, 1);
                         changed = true;
@@ -60,7 +53,6 @@
         });
     }
 
-    console.info("autoresume: init background script");
     browser.runtime.onMessage.addListener((msg) => {
         console.info("autoresume: background received command: " + msg.command);
         console.debug(msg);
@@ -70,17 +62,26 @@
         } else if (msg.command == "update") {
             // Remove download id from autoresume list if not selected.
             // Add if selected.
+            let changed = false;
             let n = autoresumeIds.indexOf(msg.id);
             if (msg.selected) {
-                if (n == -1)
+                if (n == -1) {
                     autoresumeIds.push(msg.id);
+                    changed = true;
+                }
             } else {
-                if (n != -1)
+                if (n != -1) {
                     autoresumeIds.splice(n, 1);
+                    changed = true;
+                }
             }
-            browser.storage.local.set({autoresume:autoresumeIds});
+            if (changed)
+                browser.storage.local.set({autoresume:autoresumeIds});
         } else if (msg.command == "option-auto") {
             options.auto = msg.selected;
+            browser.storage.local.set({options:options});
+        } else if (msg.command == "option-notify-resume") {
+            options.notify = msg.selected;
             browser.storage.local.set({options:options});
         }
     });
@@ -92,7 +93,8 @@
         console.info("autoresume: download created: " + basename(dl.filename));
         console.debug(dl);
         if (options.auto) {
-            autoresumeIds.push(dl.id);
+            let dlId = dl.id.toString();
+            autoresumeIds.push(dlId);
             browser.storage.local.set({autoresume:autoresumeIds});
             reloadDownloads();
         }
@@ -104,10 +106,12 @@
     /*
     browser.downloads.onErased.addListener((dlId) => {
         // console.info("autoresume: download erased: " + dlId);
-        let n = autoresumeIds.findIndex((dl) => dl.id == dlId);
-        if (n != -1)
+        let n = autoresumeIds.indexOf(dlId.toString());
+        if (n != -1) {
             autoresumeIds.splice(n, 1);
-        browser.storage.local.set({autoresume:autoresumeIds});
+            browser.storage.local.set({autoresume:autoresumeIds});
+            reloadDownloads();
+        }
     });
     */
 
@@ -118,10 +122,12 @@
                     dlDelta.state.previous + " -> " + dlDelta.state.current);
         if (dlDelta.state.current == "complete") {
             // Remove from autoresume list
-            let n = autoresumeIds.findIndex((dl) => dl.id == dlId);
-            if (n != -1)
+            let n = autoresumeIds.indexOf(dlDelta.id.toString());
+            if (n != -1) {
                 autoresumeIds.splice(n, 1);
-            browser.storage.local.set({autoresume:autoresumeIds});
+                browser.storage.local.set({autoresume:autoresumeIds});
+                reloadDownloads();
+            }
         } else if (dlDelta.state.current == "interrupted") {
             // If a download is interrupted, see if we can restart it
             browser.alarms.create("autoresume", {delayInMinutes:0.5});
@@ -132,9 +138,9 @@
         console.debug("autoresume: alarm");
         if (alarmInfo.name != "autoresume")
             return;
-        browser.downloads.search({}).then(function(dls) {
+        browser.downloads.search({}).then((dls) => {
             for (let dlId of autoresumeIds) {
-                let dl = dls.find((d) => d.id == dlId &&
+                let dl = dls.find((d) => d.id.toString() == dlId &&
                                          d.state == "interrupted" &&
                                          d.canResume);
                 if (dl) {
@@ -154,6 +160,40 @@
                     browser.downloads.resume(dl.id).then(onResume, onError);
                 }
             }
+        });
+    });
+
+    browser.storage.local.get({'autoresume':autoresumeIds,
+                               'options':options}, (result) => {
+        console.info("autoresume: restored state");
+        autoresumeIds = result.autoresume;
+        for (let opt in result.options)
+            options[opt] = result.options[opt];
+
+        browser.downloads.search({}).then((dls) => {
+            let changed = false;
+            // Remove any no-longer-present download
+            for (let i = autoresumeIds.length - 1; i >= 0; i--) {
+                let dlId = autoresumeIds[i];
+                let dl = dls.find((d) => d.id.toString() == dlId);
+                if (!dl) {
+                    autoresumeIds.splice(i, 1);
+                    changed = true;
+                }
+            }
+            // Add any new downloads if automatic-resume is on
+            if (options.auto) {
+                for (let dl of dls) {
+                    let dlId = dl.id.toString();
+                    if (dl.state != "complete" &&
+                        autoresumeIds.indexOf(dlId) == -1) {
+                            autoresumeIds.push(dlId);
+                            changed = true;
+                        }
+                }
+            }
+            if (changed)
+                browser.storage.local.set({autoresume:autoresumeIds});
         });
     });
 

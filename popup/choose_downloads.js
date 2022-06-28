@@ -6,7 +6,7 @@
 
     // console.info("autoresume: init popup script");
 
-    function downloadClick(ev) {
+    function downloadCB(ev) {
         let el = ev.target;
         let msg = {
             command: "update",
@@ -35,7 +35,7 @@
             checkbox.className = "autoresume";
             if (auto.indexOf(dlId) != -1)
                 checkbox.checked = true;
-            checkbox.addEventListener("change", downloadClick);
+            checkbox.addEventListener("change", downloadCB);
             let label = document.createElement("label");
             let name = dl.filename.replace(/^.*[\\\/]/, '');
             label.textContent = ' ' + name + ' (' + dl.state + ')';
@@ -54,10 +54,10 @@
 
         // Display option states
         document.getElementById("option-auto").checked = options.auto;
-        document.getElementById("option-notify").checked = options.notify;
+        document.getElementById("option-notify-resume").checked = options.notify;
     }
 
-    function optionClick(ev) {
+    function optionCB(ev) {
         let el = ev.target;
         let msg = {
             command: el.id,
@@ -68,10 +68,22 @@
         // console.debug(msg);
     }
 
-    document.getElementById("option-auto").addEventListener("change",
-                                                            optionClick);
-    document.getElementById("option-notify").addEventListener("change",
-                                                              optionClick);
+    function optionNotifyCB(ev) {
+        let perm = {"permissions":["notifications"]};
+        browser.permissions.request(perm).then((allowed) => {
+            if (allowed) {
+                console.debug("notifications permission granted");
+                optionCB(ev);
+            } else {
+                console.debug("notifications permission denied");
+                ev.target.checked = false;
+            }
+        });
+    }
+
+    document.getElementById("option-auto").addEventListener("change", optionCB);
+    document.getElementById("option-notify-resume").addEventListener("change",
+                                                              optionNotifyCB);
     browser.runtime.onMessage.addListener((msg) => {
         console.info("autoresume: popup received command: " + msg.command);
         console.debug(msg);
