@@ -4,7 +4,7 @@
 
 (function() {
 
-    // console.info("autoresume: init popup script");
+    console.info("autoresume: init popup script");
 
     function downloadCB(ev) {
         let el = ev.target;
@@ -48,46 +48,18 @@
         if (count == 0) {
             let p = document.createElement("p");
             p.textContent = "No active downloads.";
-            // p.className = "autoresume";
             activeDownloads.appendChild(p);
         }
-
-        // Display option states
-        document.getElementById("option-auto").checked = options.auto;
-        document.getElementById("option-notify-resume").checked = options.notify;
     }
 
-    function optionCB(ev) {
-        let el = ev.target;
-        let msg = {
-            command: el.id,
-            selected: el.checked,
-        };
-        browser.runtime.sendMessage(msg);
-        // console.info("autoresume: sent update");
-        // console.debug(msg);
-    }
+    document.getElementById("options").addEventListener("click", (ev) => {
+        browser.runtime.openOptionsPage();
+    });
 
-    function optionNotifyCB(ev) {
-        let perm = {"permissions":["notifications"]};
-        browser.permissions.request(perm).then((allowed) => {
-            if (allowed) {
-                console.debug("notifications permission granted");
-                optionCB(ev);
-            } else {
-                console.debug("notifications permission denied");
-                ev.target.checked = false;
-            }
-        });
-    }
-
-    document.getElementById("option-auto").addEventListener("change", optionCB);
-    document.getElementById("option-notify-resume").addEventListener("change",
-                                                              optionNotifyCB);
     browser.runtime.onMessage.addListener((msg) => {
         console.info("autoresume: popup received command: " + msg.command);
         console.debug(msg);
-        if (msg.command == "show") {
+        if (msg.command == "show-downloads") {
             showDownloads(msg.downloads, msg.auto, msg.options);
         }
     });

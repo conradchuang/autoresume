@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet" href="options.css"/>
+</head>
+
+<body>
+  <div class="options">
+    <div>
+      <div class="option-div">
+	<input type="checkbox" id="option-auto" class="option-input"/>
+      </div>
+      <label for="option-auto">
+	Automatically restart all interrupted downloads</label>
+    </div>
+    <div>
+      <div class="option-div">
+	<input type="checkbox"
+	       id="option-notify-resume" class="option-input"/>
+      </div>
+      <label for="option-notify-resume">
+	Notify me when downloads resume</label>
+    </div>
+    <div>
+      <div class="option-div">
+	<input type="checkbox"
+	       id="option-notify-interrupt" class="option-input"/>
+      </div>
+      <label for="option-notify-resume">
+	Notify me when downloads are interrupted</label>
+    </div>
+    <div>
+      <div class="option-div">
+	<input type="number" id="option-interval" class="option-input"
+	       min="5" max="600" step="5" value="30"/>
+      </div>
+      <label for="option-interval">
+	Wait interval (in seconds) before resuming download</label>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+
+</html>

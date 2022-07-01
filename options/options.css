@@ -1,0 +1,10 @@
+.option-div {
+	display: inline-block;
+	width: 4rem;
+	vertical-align: bottom;
+}
+
+.option-input {
+	max-width: 3rem;
+	float: right;
+}
