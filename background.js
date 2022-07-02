@@ -1,14 +1,15 @@
 //
-// vim: set expandtab ts=4 sw=4:
+// vim: set autoindent expandtab ts=4 sw=4:
 //
 
 (function() {
 
-    console.info("autoresume: init background script");
+    // console.info("autoresume: init background script");
 
     var autoresumeIds = [];
     var options = {
             auto:true,
+            logEvents:true,
             notifyResume:false,
             notifyInterrupt:false,
             interval:30
@@ -39,7 +40,7 @@
     }
 
     function onResume() {
-        console.log("autoresume: download resumed");
+        // console.log("autoresume: download resumed");
     }
 
     function onError(error) {
@@ -68,8 +69,9 @@
     }
 
     browser.runtime.onMessage.addListener((msg) => {
-        console.info("autoresume: background received command: " + msg.command);
-        console.debug(msg);
+        // console.info("autoresume: background received command: " +
+        //              msg.command);
+        // console.debug(msg);
         if (msg.command == "popup") {
             // Send "show-downloads" message with latest list of downloads.
             reloadDownloads();
@@ -97,6 +99,9 @@
         } else if (msg.command == "option-auto") {
             options.auto = msg.selected;
             browser.storage.local.set({options:options});
+        } else if (msg.command == "option-log-events") {
+            options.logEvents = msg.selected;
+            browser.storage.local.set({options:options});
         } else if (msg.command == "option-notify-resume") {
             options.notifyResume = msg.selected;
             browser.storage.local.set({options:options});
@@ -113,8 +118,9 @@
     // and automatically resume if possible.
 
     browser.downloads.onCreated.addListener((dl) => {
-        console.info("autoresume: download created: " + basename(dl.filename));
-        console.debug(dl);
+        // console.info("autoresume: download created: " +
+        //              basename(dl.filename));
+        // console.debug(dl);
         if (options.auto) {
             let dlId = dl.id.toString();
             autoresumeIds.push(dlId);
@@ -141,8 +147,10 @@
     browser.downloads.onChanged.addListener((dlDelta) => {
         if (!dlDelta.state)
             return;
-        console.info("autoresume: download changed: " + dlDelta.id + ": " +
-                    dlDelta.state.previous + " -> " + dlDelta.state.current);
+        // console.info("autoresume: download changed: " +
+        //              dlDelta.id + ": " +
+        //              dlDelta.state.previous + " -> " +
+        //              dlDelta.state.current);
         if (dlDelta.state.current == "complete") {
             // Remove from autoresume list
             let n = autoresumeIds.indexOf(dlDelta.id.toString());
@@ -155,21 +163,24 @@
             // If a download is interrupted, see if we can restart it
             let interval = options.interval / 60.0;
             browser.alarms.create("autoresume", {delayInMinutes:interval});
-            if (options.notifyInterrupt) {
+            if (options.notifyInterrupt || options.logEvents) {
                 let msg = "Download for " + basename(dl.filename) +
                          " interrupted at " + new Date().toLocaleTimeString();
-                let n = {type:"basic",
-                         iconUrl:"icons/autoresume-96.png",
-                         title:"Download Resumed",
-                         message:msg};
-                browser.notifications.create(notificationId, n);
-                console.log("autoresume: " + msg);
+                if (options.notifyInterrupt) {
+                    let n = {type:"basic",
+                             iconUrl:"icons/autoresume-96.png",
+                             title:"Download Resumed",
+                             message:msg};
+                    browser.notifications.create(notificationId, n);
+                }
+                if (options.logEvents)
+                    console.log("autoresume: " + msg);
             }
         }
     });
 
     browser.alarms.onAlarm.addListener((alarmInfo) => {
-        console.debug("autoresume: alarm");
+        // console.debug("autoresume: alarm");
         if (alarmInfo.name != "autoresume")
             return;
         browser.downloads.search({}).then((dls) => {
@@ -178,20 +189,21 @@
                                          d.state == "interrupted" &&
                                          d.canResume);
                 if (dl) {
-                    console.debug("autoresume: resume: " +
-                                  basename(dl.filename));
-                    if (options.notifyResume) {
+                    browser.downloads.resume(dl.id).then(onResume, onError);
+                    if (options.notifyResume || options.logEvents) {
                         let msg = "Download for " + basename(dl.filename) +
                                   " resumed at " +
                                   new Date().toLocaleTimeString();
-                        let n = {type:"basic",
-                                 iconUrl:"icons/autoresume-96.png",
-                                 title:"Download Resumed",
-                                 message:msg};
-                        browser.notifications.create(notificationId, n);
+                        if (options.notifyResume) {
+                            let n = {type:"basic",
+                                     iconUrl:"icons/autoresume-96.png",
+                                     title:"Download Resumed",
+                                     message:msg};
+                            browser.notifications.create(notificationId, n);
+                        }
+                        if (options.logEvents)
+                            console.log("autoresume: " + msg);
                     }
-                    browser.downloads.resume(dl.id).then(onResume, onError);
-                    console.log("autoresume: " + msg);
                 }
             }
         });
@@ -199,7 +211,7 @@
 
     browser.storage.local.get({'autoresume':autoresumeIds,
                                'options':options}, (result) => {
-        console.info("autoresume: restored state");
+        // console.info("autoresume: restored state");
         autoresumeIds = result.autoresume;
         for (let opt in result.options)
             options[opt] = result.options[opt];

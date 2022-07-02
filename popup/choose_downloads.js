@@ -4,7 +4,7 @@
 
 (function() {
 
-    console.info("autoresume: init popup script");
+    // console.info("autoresume: init popup script");
 
     function downloadCB(ev) {
         let el = ev.target;
@@ -57,8 +57,8 @@
     });
 
     browser.runtime.onMessage.addListener((msg) => {
-        console.info("autoresume: popup received command: " + msg.command);
-        console.debug(msg);
+        // console.info("autoresume: popup received command: " + msg.command);
+        // console.debug(msg);
         if (msg.command == "show-downloads") {
             showDownloads(msg.downloads, msg.auto, msg.options);
         }

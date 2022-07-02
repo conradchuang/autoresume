@@ -4,7 +4,7 @@
 
 (function() {
 
-    console.info("autoresume: init options script");
+    // console.info("autoresume: init options script");
 
     function optionCheckboxCB(ev) {
         let el = ev.target;
@@ -19,10 +19,10 @@
         let perm = {"permissions":["notifications"]};
         browser.permissions.request(perm).then((allowed) => {
             if (allowed) {
-                console.debug("notifications permission granted");
+                // console.debug("notifications permission granted");
                 optionCheckboxCB(ev);
             } else {
-                console.debug("notifications permission denied");
+                // console.debug("notifications permission denied");
                 ev.target.checked = false;
             }
         });
@@ -43,12 +43,15 @@
         }
         // Display option states
         e("option-auto").checked = options.auto;
+        e("option-log-events").checked = options.logEvents;
         e("option-notify-resume").checked = options.notifyResume;
         e("option-notify-interrupt").checked = options.notifyInterrupt;
         e("option-interval").value = options.interval;
     }
 
     document.getElementById("option-auto")
+            .addEventListener("change", optionCheckboxCB);
+    document.getElementById("option-log-events")
             .addEventListener("change", optionCheckboxCB);
     document.getElementById("option-notify-resume")
             .addEventListener("change", optionNotifyCB);
@@ -58,8 +61,8 @@
             .addEventListener("change", optionNumberCB);
 
     browser.runtime.onMessage.addListener((msg) => {
-        console.info("autoresume: options received command: " + msg.command);
-        console.debug(msg);
+        // console.info("autoresume: options received command: " + msg.command);
+        // console.debug(msg);
         if (msg.command == "show-options")
             showOptions(msg.options);
     });
