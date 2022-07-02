@@ -109,8 +109,12 @@
             options.notifyInterrupt = msg.selected;
             browser.storage.local.set({options:options});
         } else if (msg.command == "option-interval") {
-            options.interval = parseInt(msg.value);
-            browser.storage.local.set({options:options});
+            let interval = parseInt(msg.value);
+            // Should match option.html limits
+            if (!isNaN(interval) && interval >= 5 && interval <= 600) {
+                options.interval = interval
+                browser.storage.local.set({options:options});
+            }
         }
     });
 
