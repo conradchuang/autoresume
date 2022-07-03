@@ -33,8 +33,7 @@
             checkbox.setAttribute("type", "checkbox");
             checkbox.value = dlId;
             checkbox.className = "autoresume";
-            if (auto.indexOf(dlId) != -1)
-                checkbox.checked = true;
+            checkbox.checked = auto[dlId];
             checkbox.addEventListener("change", downloadCB);
             let label = document.createElement("label");
             let name = dl.filename.replace(/^.*[\\\/]/, '');
