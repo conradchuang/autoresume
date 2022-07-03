@@ -1,5 +1,5 @@
 //
-// vim: set autoindent expandtab ts=4 sw=4:
+// vim: set autoindent expandtab ts=4 sw=4 sts=4:
 //
 
 (function() {
@@ -7,6 +7,7 @@
     // console.info("autoresume: init background script");
 
     var autoresumeIds = [];
+    // value for options should match those in popup/choose_downloads.html
     var options = {
             auto:true,
             logEvents:true,
@@ -14,8 +15,8 @@
             notifyInterrupt:false,
             interval:30
     };
-    let notificationId = "Auto Resume Notification";
-    // value for options should match those in popup/choose_downloads.html
+    var notificationId = "Auto Resume Notification";
+    var alarmPrefix = "autoresume-";
 
     function reloadDownloads() {
         let query = {"orderBy": ["-startTime"]};
@@ -166,34 +167,45 @@
         } else if (dlDelta.state.current == "interrupted") {
             // If a download is interrupted, see if we can restart it
             let interval = options.interval / 60.0;
-            browser.alarms.create("autoresume", {delayInMinutes:interval});
+            let name = alarmPrefix + dlDelta.id.toString();
+            browser.alarms.create(name, {delayInMinutes:interval});
+            // console.debug("autoresume: download " + dlDelta.id.toString() +
+            //               " interrupted at " + 
+            //               new Date().toLocaleTimeString());
+            // console.debug(dlDelta);
             if (options.notifyInterrupt || options.logEvents) {
-                let msg = "Download for " + basename(dl.filename) +
-                         " interrupted at " + new Date().toLocaleTimeString();
-                if (options.notifyInterrupt) {
-                    let n = {type:"basic",
-                             iconUrl:"icons/autoresume-96.png",
-                             title:"Download Resumed",
-                             message:msg};
-                    browser.notifications.create(notificationId, n);
-                }
-                if (options.logEvents)
-                    console.log("autoresume: " + msg);
+                browser.downloads.search({id:dlDelta.id}).then((dls) => {
+                    // console.debug("autoresume: notify interrupt");
+                    // console.debug(dls);
+                    if (dls.length == 0)
+                        return;
+                    let dl = dls[0];
+                    let msg = "Download for " + basename(dl.filename) +
+                             " interrupted at " +
+                             new Date().toLocaleTimeString();
+                    if (options.notifyInterrupt) {
+                        let n = {type:"basic",
+                                 iconUrl:"icons/autoresume-96.png",
+                                 title:"Download Resumed",
+                                 message:msg};
+                        browser.notifications.create(notificationId, n);
+                    }
+                    if (options.logEvents)
+                        console.log("autoresume: " + msg);
+                });
             }
         }
     });
 
     browser.alarms.onAlarm.addListener((alarmInfo) => {
         // console.debug("autoresume: alarm");
-        if (alarmInfo.name != "autoresume")
+        if (!alarmInfo.name.startsWith(alarmPrefix))
             return;
-        browser.downloads.search({}).then((dls) => {
-            for (let dlId of autoresumeIds) {
-                let dl = dls.find((d) => d.id.toString() == dlId &&
-                                         d.state == "interrupted" &&
-                                         d.canResume);
-                if (dl) {
-                    browser.downloads.resume(dl.id).then(onResume, onError);
+        let id = parseInt(alarmInfo.name.substring(alarmPrefix.length));
+        browser.downloads.search({id:id}).then((dls) => {
+            // There should only be one item in dls array
+            for (let dl of dls) {
+                if (dl.state == "interrupted" && dl.canResume) {
                     if (options.notifyResume || options.logEvents) {
                         let msg = "Download for " + basename(dl.filename) +
                                   " resumed at " +
@@ -208,6 +220,7 @@
                         if (options.logEvents)
                             console.log("autoresume: " + msg);
                     }
+                    browser.downloads.resume(dl.id).then(onResume, onError);
                 }
             }
         });

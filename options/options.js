@@ -32,7 +32,7 @@
         let el = ev.target;
         let msg = {
             command: el.id,
-            selected: el.value,
+            value: el.value,
         };
         browser.runtime.sendMessage(msg);
     }
@@ -58,7 +58,7 @@
     document.getElementById("option-notify-interrupt")
             .addEventListener("change", optionNotifyCB);
     document.getElementById("option-interval")
-            .addEventListener("change", optionNumberCB);
+            .addEventListener("input", optionNumberCB);
 
     browser.runtime.onMessage.addListener((msg) => {
         // console.info("autoresume: options received command: " + msg.command);
