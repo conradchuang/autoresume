@@ -12,7 +12,7 @@
             command: el.id,
             selected: el.checked,
         };
-        browser.runtime.sendMessage(msg);
+        browser.runtime.sendMessage(msg).then(value => {});
     }
 
     function optionNotifyCB(ev) {
@@ -34,7 +34,7 @@
             command: el.id,
             value: el.value,
         };
-        browser.runtime.sendMessage(msg);
+        browser.runtime.sendMessage(msg).then(value => {});
     }
 
     function showOptions(options) {
@@ -49,23 +49,26 @@
         e("option-interval").value = options.interval;
     }
 
-    document.getElementById("option-auto")
-            .addEventListener("change", optionCheckboxCB);
-    document.getElementById("option-log-events")
-            .addEventListener("change", optionCheckboxCB);
-    document.getElementById("option-notify-resume")
-            .addEventListener("change", optionNotifyCB);
-    document.getElementById("option-notify-interrupt")
-            .addEventListener("change", optionNotifyCB);
-    document.getElementById("option-interval")
-            .addEventListener("input", optionNumberCB);
+    window.addEventListener("load", (event) => {
+        document.getElementById("option-auto")
+                .addEventListener("change", optionCheckboxCB);
+        document.getElementById("option-log-events")
+                .addEventListener("change", optionCheckboxCB);
+        document.getElementById("option-notify-resume")
+                .addEventListener("change", optionNotifyCB);
+        document.getElementById("option-notify-interrupt")
+                .addEventListener("change", optionNotifyCB);
+        document.getElementById("option-interval")
+                .addEventListener("input", optionNumberCB);
 
-    browser.runtime.onMessage.addListener((msg) => {
-        // console.info("autoresume: options received command: " + msg.command);
-        // console.debug(msg);
-        if (msg.command == "show-options")
-            showOptions(msg.options);
+        browser.runtime.onMessage.addListener((msg) => {
+            // console.info("autoresume: options received command: " +
+            //              msg.command);
+            // console.debug(msg);
+            if (msg.command == "show-options")
+                showOptions(msg.options);
+        });
+        browser.runtime.sendMessage({command:"options"}).then(value => {});
     });
-    browser.runtime.sendMessage({command:"options"});
 
 })();

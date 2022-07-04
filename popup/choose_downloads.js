@@ -13,7 +13,7 @@
             selected: el.checked,
             id: el.value,
         };
-        browser.runtime.sendMessage(msg);
+        browser.runtime.sendMessage(msg).then(value => {});
         // console.info("autoresume: sent update");
         // console.debug(msg);
     }
@@ -51,17 +51,19 @@
         }
     }
 
-    document.getElementById("options").addEventListener("click", (ev) => {
-        browser.runtime.openOptionsPage();
-    });
+    window.addEventListener("load", (event) => {
+        document.getElementById("options").addEventListener("click", (ev) => {
+            browser.runtime.openOptionsPage();
+        });
 
-    browser.runtime.onMessage.addListener((msg) => {
-        // console.info("autoresume: popup received command: " + msg.command);
-        // console.debug(msg);
-        if (msg.command == "show-downloads") {
-            showDownloads(msg.downloads, msg.auto, msg.options);
-        }
+        browser.runtime.onMessage.addListener((msg) => {
+            // console.info("autoresume: popup received command: " +
+            //              msg.command);
+            // console.debug(msg);
+            if (msg.command == "show-downloads")
+                showDownloads(msg.downloads, msg.auto, msg.options);
+        });
+        browser.runtime.sendMessage({command:"popup"}).then(value => {});
     });
-    browser.runtime.sendMessage({command:"popup"});
 
 })();
