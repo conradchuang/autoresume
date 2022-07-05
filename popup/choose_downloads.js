@@ -35,11 +35,17 @@
             checkbox.className = "autoresume";
             checkbox.checked = auto[dlId];
             checkbox.addEventListener("change", downloadCB);
+            let img = document.createElement("img");
+            img.className = "download-state";
+            if (dl.state == "in_progress")
+                img.src = "../icons/status-running.png";
+            else
+                img.src = "../icons/status-stopped.png";
             let label = document.createElement("label");
-            let name = dl.filename.replace(/^.*[\\\/]/, '');
-            label.textContent = ' ' + name + ' (' + dl.state + ')';
+            label.textContent = dl.filename.replace(/^.*[\\\/]/, '');
             let br = document.createElement("br");
             activeDownloads.appendChild(checkbox);
+            activeDownloads.appendChild(img);
             activeDownloads.appendChild(label);
             activeDownloads.appendChild(br);
             count += 1;
