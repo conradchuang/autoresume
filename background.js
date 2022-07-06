@@ -26,7 +26,7 @@
                    downloads:dls,
                    auto:autoresumeIds,
                    options:options};
-            browser.runtime.sendMessage(msg).then(value => {});
+            browser.runtime.sendMessage(msg);
         }
         allDownloads.then(show, onError);
     }
@@ -34,7 +34,7 @@
     function reloadOptions() {
         msg = {command:"show-options",
                options:options};
-        browser.runtime.sendMessage(msg).then(value => {});
+        browser.runtime.sendMessage(msg);
     }
 
     function onResume() {

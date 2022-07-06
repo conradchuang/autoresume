@@ -12,7 +12,7 @@
             command: el.id,
             selected: el.checked,
         };
-        browser.runtime.sendMessage(msg).then(value => {});
+        browser.runtime.sendMessage(msg);
     }
 
     function optionNotifyCB(ev) {
@@ -34,7 +34,7 @@
             command: el.id,
             value: el.value,
         };
-        browser.runtime.sendMessage(msg).then(value => {});
+        browser.runtime.sendMessage(msg);
     }
 
     function showOptions(options) {
@@ -68,7 +68,7 @@
             if (msg.command == "show-options")
                 showOptions(msg.options);
         });
-        browser.runtime.sendMessage({command:"options"}).then(value => {});
+        browser.runtime.sendMessage({command:"options"});
     });
 
 })();

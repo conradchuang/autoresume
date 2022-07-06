@@ -13,7 +13,7 @@
             selected: el.checked,
             id: el.value,
         };
-        browser.runtime.sendMessage(msg).then(value => {});
+        browser.runtime.sendMessage(msg);
         // console.info("autoresume: sent update");
         // console.debug(msg);
     }
@@ -69,7 +69,7 @@
             if (msg.command == "show-downloads")
                 showDownloads(msg.downloads, msg.auto, msg.options);
         });
-        browser.runtime.sendMessage({command:"popup"}).then(value => {});
+        browser.runtime.sendMessage({command:"popup"});
     });
 
 })();
