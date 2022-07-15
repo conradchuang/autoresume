@@ -2,7 +2,8 @@ VERSION= $(shell grep \"version\" manifest.json | sed "s/.*: \"\(.*\)\".*/\1/")
 FILES=	manifest.json \
 	background.js \
 	icons \
-	popup
+	popup \
+	options
 IGNORE=	icons/autoresume-512.png
 
 # Description to use in Firefox extension descriptor
