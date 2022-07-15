@@ -21,4 +21,4 @@ dist:
 	zip -r -Z deflate -D autoresume-$(VERSION).zip $(FILES) -x $(IGNORE)
 
 clean:
-	rm -f autoresume-$(VERSION).zip
+	rm -f autoresume-*.zip
