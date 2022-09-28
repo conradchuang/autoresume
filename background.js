@@ -11,13 +11,13 @@
             logEvents:true,
             notifyResume:false,
             notifyInterrupt:false,
-            interval:30
+            interval:30,
+            debug:browser.runtime.getManifest().version.includes("pre")
     };
     var notificationId = "Auto Resume Notification";
     var alarmPrefix = "autoresume-";
-    var prerelease = browser.runtime.getManifest().version.includes("pre");
 
-    if (prerelease)
+    if (options.debug)
         console.info("autoresume: init background script");
 
     function reloadDownloads() {
@@ -40,7 +40,7 @@
     }
 
     function onResume() {
-        if (prerelease)
+        if (options.debug)
             console.log("autoresume: download resumed");
     }
 
@@ -70,7 +70,7 @@
     }
 
     browser.runtime.onMessage.addListener((msg) => {
-        if (prerelease) {
+        if (options.debug) {
             console.info("autoresume: background received command: " +
                          msg.command);
             // console.debug(msg);
@@ -107,6 +107,9 @@
                 options.interval = interval
                 browser.storage.local.set({options:options});
             }
+        } else if (msg.command == "option-notify-debug") {
+            options.debug = msg.selected;
+            browser.storage.local.set({options:options});
         }
     });
 
@@ -114,7 +117,7 @@
     // and automatically resume if possible.
 
     browser.downloads.onCreated.addListener((dl) => {
-        if (prerelease) {
+        if (options.debug) {
             console.info("autoresume: download created: " +
                          basename(dl.filename));
             console.debug(dl);
@@ -129,7 +132,7 @@
     browser.downloads.onChanged.addListener((dlDelta) => {
         if (!dlDelta.state)
             return;
-        if (prerelease)
+        if (options.debug)
             console.info("autoresume: download changed: " +
                          dlDelta.id + ": " +
                          dlDelta.state.previous + " -> " +
@@ -147,7 +150,7 @@
             let interval = options.interval / 60.0;
             let name = alarmPrefix + dlDelta.id.toString();
             browser.alarms.create(name, {delayInMinutes:interval});
-            if (prerelease) {
+            if (options.debug) {
                 console.debug("autoresume: download " + dlDelta.id.toString() +
                               " interrupted at " + 
                               new Date().toLocaleTimeString());
@@ -155,7 +158,7 @@
             }
             if (options.notifyInterrupt || options.logEvents) {
                 browser.downloads.search({id:dlDelta.id}).then((dls) => {
-                    if (prerelease) {
+                    if (options.debug) {
                         console.debug("autoresume: notify interrupt");
                         console.debug(dls);
                     }
@@ -165,6 +168,8 @@
                     let msg = "Download for " + basename(dl.filename) +
                              " interrupted at " +
                              new Date().toLocaleTimeString();
+                    if (dl.error)
+                        msg += " (" + dl.error + ")";
                     if (options.notifyInterrupt) {
                         let n = {type:"basic",
                                  iconUrl:"icons/autoresume-96.png",
@@ -180,7 +185,7 @@
     });
 
     browser.alarms.onAlarm.addListener((alarmInfo) => {
-        if (prerelease)
+        if (options.debug)
             console.debug("autoresume: alarm");
         if (!alarmInfo.name.startsWith(alarmPrefix))
             return;
@@ -217,7 +222,7 @@
 
     // Restore list of monitored downloads
     browser.storage.local.get({'autoresume':autoresumeIds}, (result) => {
-        if (prerelease)
+        if (options.debug)
             console.info("autoresume: restored state");
         autoresumeIds = result.autoresume;
         browser.downloads.search({}).then((dls) => {

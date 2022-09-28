@@ -47,6 +47,7 @@
         e("option-notify-resume").checked = options.notifyResume;
         e("option-notify-interrupt").checked = options.notifyInterrupt;
         e("option-interval").value = options.interval;
+        e("option-notify-debug").checked = options.debug;
     }
 
     window.addEventListener("load", (event) => {
@@ -60,6 +61,8 @@
                 .addEventListener("change", optionNotifyCB);
         document.getElementById("option-interval")
                 .addEventListener("input", optionNumberCB);
+        document.getElementById("option-notify-debug")
+                .addEventListener("change", optionNotifyCB);
 
         browser.runtime.onMessage.addListener((msg) => {
             // console.info("autoresume: options received command: " +
