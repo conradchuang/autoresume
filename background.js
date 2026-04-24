@@ -12,6 +12,7 @@
             notifyResume:false,
             notifyInterrupt:false,
             interval:30,
+            monitorInterval:0,
             debug:browser.runtime.getManifest().version.includes("pre")
     };
     var notificationId = "Auto Resume Notification";
@@ -107,6 +108,27 @@
                 options.interval = interval
                 browser.storage.local.set({options:options});
             }
+        } else if (msg.command == "option-monitor-interval") {
+            let interval = parseInt(msg.value);
+            // Should match option.html limits
+            if (!isNaN(interval) && interval >= 0 && interval <= 3600) {
+                if (interval != options.monitorInterval) {
+                    options.monitorInterval = interval
+                    browser.storage.local.set({options:options});
+                    let name = alarmPrefix + "monitor";
+                    if (interval) {
+                        let minutes = interval / 60.0;
+                        if (options.debug)
+                            console.debug("monitor alarm: " + interval + "s");
+                        browser.alarms.create(name, {periodInMinutes:minutes});
+                    } else {
+                        browser.alarms.clear(name);
+                        if (options.debug)
+                            console.debug("monitor alarm: off");
+                    }
+                    reloadDownloads();
+                }
+            }
         } else if (msg.command == "option-notify-debug") {
             options.debug = msg.selected;
             browser.storage.local.set({options:options});
@@ -189,7 +211,14 @@
             console.debug("autoresume: alarm");
         if (!alarmInfo.name.startsWith(alarmPrefix))
             return;
-        let id = parseInt(alarmInfo.name.substring(alarmPrefix.length));
+        let name = alarmInfo.name.substring(alarmPrefix.length);
+        if (name == "monitor") {
+            if (options.logEvents)
+                console.log("autoresume: update download rates");
+            reloadDownloads();
+            return;
+        }
+        let id = parseInt(name);
         browser.downloads.search({id:id}).then((dls) => {
             // There should only be one item in dls array
             for (let dl of dls) {
@@ -249,5 +278,12 @@
                 browser.storage.local.set({autoresume:autoresumeIds});
         });
     });
+
+    // Start monitor alarm if needed
+    if (options["monitorInterval"]) {
+        let name = alarmPrefix + "monitor";
+        let interval = options.monitorInterval / 60.0;
+        browser.alarms.create(name, {periodInMinutes:interval});
+    }
 
 })();

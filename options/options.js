@@ -47,6 +47,7 @@
         e("option-notify-resume").checked = options.notifyResume;
         e("option-notify-interrupt").checked = options.notifyInterrupt;
         e("option-interval").value = options.interval;
+        e("option-monitor-interval").value = options.monitorInterval;
         e("option-notify-debug").checked = options.debug;
     }
 
@@ -60,6 +61,8 @@
         document.getElementById("option-notify-interrupt")
                 .addEventListener("change", optionNotifyCB);
         document.getElementById("option-interval")
+                .addEventListener("input", optionNumberCB);
+        document.getElementById("option-monitor-interval")
                 .addEventListener("input", optionNumberCB);
         document.getElementById("option-notify-debug")
                 .addEventListener("change", optionNotifyCB);

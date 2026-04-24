@@ -19,10 +19,8 @@
     }
 
     function showDownloads(downloads, auto, options) {
-        let oldDownloads = document.body.querySelectorAll(".autoresume");
-        for (let dl of oldDownloads)
-            dl.remove();
         let activeDownloads = document.body.querySelector(".active-downloads");
+        activeDownloads.replaceChildren();
         let count = 0;
         for (let dl of downloads) {
             let dlId = dl.id.toString();
@@ -33,8 +31,14 @@
             checkbox.setAttribute("type", "checkbox");
             checkbox.value = dlId;
             checkbox.className = "autoresume";
-            checkbox.checked = auto[dlId];
-            checkbox.addEventListener("change", downloadCB);
+            if (dl.canResume.current) {
+                checkbox.checked = auto[dlId];
+                checkbox.disabled = false;
+                checkbox.addEventListener("change", downloadCB);
+            } else {
+                checkbox.checked = false;
+                checkbox.disabled = true;
+            }
             let img = document.createElement("img");
             img.className = "download-state";
             if (dl.state == "in_progress")
@@ -42,11 +46,48 @@
             else
                 img.src = "../icons/status-stopped.png";
             let label = document.createElement("label");
-            label.textContent = dl.filename.replace(/^.*[\\\/]/, '');
+            let filename = dl.filename.replace(/^.*[\\\/]/, '');
             let br = document.createElement("br");
             activeDownloads.appendChild(checkbox);
             activeDownloads.appendChild(img);
             activeDownloads.appendChild(label);
+            if (options.monitorInterval) {
+                // Estimate the download rate and time remaining
+                // using the overall rate so far
+                let now = new Date();
+                let start = new Date(dl.startTime);
+                let dlTime = (now - start) / 1000;
+                let dlRate = dl.bytesReceived / dlTime;    // B/sec
+                let msg = filename + " (";
+                if (dlRate > 1000000)
+                    msg += (dlRate / 1000000).toFixed(1) + " MB/s";
+                else if (dlRate > 1000)
+                    msg += (dlRate / 1000).toFixed(0) + " kB/s";
+                else
+                    msg += dlRate.toFixed(0) + " B/s";
+                if (dl.totalBytes && dl.totalBytes > 0) {
+                    let bytesLeft = dl.totalBytes - dl.bytesReceived;
+                    let secondsLeft = Math.trunc(bytesLeft / dlRate);
+                    let minutesLeft = Math.trunc(secondsLeft / 60);
+                    let hoursLeft = Math.trunc(minutesLeft / 60);
+                    let rem = "";
+                    if (hoursLeft) {
+                        rem += hoursLeft + "h ";
+                        minutesLeft -= hoursLeft * 60;
+                    }
+                    if (minutesLeft)
+                        rem += minutesLeft + "m ";
+                    if (!rem)
+                        rem = secondsLeft + "s ";
+                    msg += ", " + rem + "left";
+                }
+                msg += ")";
+                let rate = document.createElement("span");
+                rate.textContent = msg;
+                activeDownloads.appendChild(rate);
+            } else {
+                label.textContent = filename;
+            }
             activeDownloads.appendChild(br);
             count += 1;
         }
