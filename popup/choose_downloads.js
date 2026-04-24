@@ -31,14 +31,8 @@
             checkbox.setAttribute("type", "checkbox");
             checkbox.value = dlId;
             checkbox.className = "autoresume";
-            if (dl.canResume.current) {
-                checkbox.checked = auto[dlId];
-                checkbox.disabled = false;
-                checkbox.addEventListener("change", downloadCB);
-            } else {
-                checkbox.checked = false;
-                checkbox.disabled = true;
-            }
+            checkbox.checked = auto[dlId];
+            checkbox.addEventListener("change", downloadCB);
             let img = document.createElement("img");
             img.className = "download-state";
             if (dl.state == "in_progress")
