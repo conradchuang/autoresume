@@ -2,11 +2,15 @@
 // vim: set autoindent expandtab ts=4 sw=4 sts=4:
 //
 
-(function() {
+console.debug("autoresume: init background script");
 
-    var autoresumeIds = {}
+const alarmPrefix = "autoresume-";
+const notificationId = "Auto Resume Notification";
+
+// Restore options state
+async function getSavedOptions() {
     // value for options should match those in popup/choose_downloads.html
-    var options = {
+    let options = {
             auto:true,
             logEvents:true,
             notifyResume:false,
@@ -15,184 +19,240 @@
             monitorInterval:0,
             debug:browser.runtime.getManifest().version.includes("pre")
     };
-    var notificationId = "Auto Resume Notification";
-    var alarmPrefix = "autoresume-";
+    let result = await browser.storage.local.get({'options':options});
+    for (let opt in result.options)
+        options[opt] = result.options[opt];
+    return options;
+}
 
+// Restore list of monitored downloads
+async function getSavedIds(options) {
+    let result = await browser.storage.local.get({'autoresume':{}});
     if (options.debug)
-        console.info("autoresume: init background script");
-
-    function reloadDownloads() {
-        let query = {"orderBy": ["-startTime"]};
-        let allDownloads = browser.downloads.search(query);
-        function show(dls) {
-            msg = {command:"show-downloads",
-                   downloads:dls,
-                   auto:autoresumeIds,
-                   options:options};
-            browser.runtime.sendMessage(msg);
+        console.debug("autoresume: recovered ids");
+    let ids = result.autoresume;
+    let dls = await browser.downloads.search({});
+    let changed = false;
+    // Remove all no-longer-present or complete downloads
+    for (let dlId in ids) {
+        let dl = dls.find((d) => d.id.toString() == dlId);
+        if (!dl || dl.state == "complete") {
+            delete ids[dlId];
+            changed = true;
         }
-        allDownloads.then(show, onError);
     }
+    // Add any new downloads if automatic-resume is on
+    for (let dl of dls) {
+        if (dl.state != "complete") {
+            let dlId = dl.id.toString();
+            if (!(dlId in ids)) {
+                ids[dlId] = options.auto;
+                changed = true;
+            }
+        }
+    }
+    if (changed)
+        await browser.storage.local.set({autoresume:ids});
+    return ids;
+}
 
-    function reloadOptions() {
-        msg = {command:"show-options",
+async function reloadDownloads(options, ids) {
+    let query = {"orderBy": ["-startTime"]};
+    function show(dls) {
+        msg = {command:"show-downloads",
+               downloads:dls,
+               auto:ids,
                options:options};
         browser.runtime.sendMessage(msg);
     }
+    await browser.downloads.search(query).then(show, onError);
+}
 
-    function onResume() {
-        if (options.debug)
-            console.log("autoresume: download resumed");
+async function reloadOptions(options) {
+    msg = {command:"show-options",
+           options:options};
+    await browser.runtime.sendMessage(msg);
+}
+
+function onResume() {
+    let options = getSavedOptions();
+    if (options.debug)
+        console.log("autoresume: download resumed");
+}
+
+function onError(error) {
+    console.error("autoresume: " + error.message);
+}
+
+function basename(path) {
+    return path.replace(/^.*[\\\/]/, '');
+}
+
+browser.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
+    let options = await getSavedOptions();
+    if (options.debug) {
+        console.info("autoresume: background received command: " + msg.command);
+        // console.debug(msg);
     }
-
-    function onError(error) {
-        console.error("autoresume: " + error.message);
-    }
-
-    function basename(path) {
-        return path.replace(/^.*[\\\/]/, '');
-    }
-
-    function clearCompleteDownloads() {
-        browser.downloads.search({}).then((dls) => {
-            let changed = false;
-            for (let dl of dls) {
-                if (dl.state == "complete") {
-                    let dlId = dl.id.toString();
-                    if (dlId in autoresumeIds) {
-                        delete autoresumeIds[dlId];
-                        changed = true;
-                    }
+    if (msg.command == "popup") {
+        // Send "show-downloads" message with latest list of downloads.
+        let ids = await getSavedIds(options);
+        await reloadDownloads(options, ids);
+    } else if (msg.command == "popdown") {
+        await browser.alarms.clear(msg.alarm);
+    } else if (msg.command == "update") {
+        // Remove download id from autoresume list if not selected.
+        // Add if selected.
+        let ids = await getSavedIds(options);
+        if (ids[msg.id] !== msg.selected) {
+            ids[msg.id] = msg.selected;
+            await browser.storage.local.set({autoresume:ids});
+        }
+    } else if (msg.command == "options") {
+        // Send "show-options" message with current options.
+        await reloadOptions(options);
+    } else if (msg.command == "option-auto") {
+        options.auto = msg.selected;
+        await browser.storage.local.set({options:options});
+    } else if (msg.command == "option-log-events") {
+        options.logEvents = msg.selected;
+        await browser.storage.local.set({options:options});
+    } else if (msg.command == "option-notify-resume") {
+        options.notifyResume = msg.selected;
+        await browser.storage.local.set({options:options});
+    } else if (msg.command == "option-notify-interrupt") {
+        options.notifyInterrupt = msg.selected;
+        await browser.storage.local.set({options:options});
+    } else if (msg.command == "option-interval") {
+        let interval = parseInt(msg.value);
+        // Should match option.html limits
+        if (!isNaN(interval) && interval >= 5 && interval <= 600) {
+            options.interval = interval
+            await browser.storage.local.set({options:options});
+        }
+    } else if (msg.command == "option-monitor-interval") {
+        let interval = parseInt(msg.value);
+        // Should match option.html limits
+        if (!isNaN(interval) && interval >= 0 && interval <= 3600) {
+            if (interval != options.monitorInterval) {
+                options.monitorInterval = interval
+                await browser.storage.local.set({options:options});
+                if (options.debug) {
+                    if (interval)
+                        console.debug("monitor alarm: " + interval + "s");
+                    else
+                        console.debug("monitor alarm: off");
                 }
+                let ids = await getSavedIds(options);
+                await reloadDownloads(options, ids);
             }
-            if (changed)
-                browser.storage.local.set({autoresume:autoresumeIds});
-        });
+        }
+    } else if (msg.command == "option-notify-debug") {
+        options.debug = msg.selected;
+        await browser.storage.local.set({options:options});
     }
+    sendResponse(true);
+});
 
-    browser.runtime.onMessage.addListener((msg) => {
-        if (options.debug) {
-            console.info("autoresume: background received command: " +
-                         msg.command);
-            // console.debug(msg);
+// Listen for download stopped/paused/failed events
+// and automatically resume if possible.
+
+browser.downloads.onCreated.addListener(async (dl) => {
+    let options = await getSavedOptions();
+    if (options.debug) {
+        console.info("autoresume: download created: " +
+                     basename(dl.filename));
+        console.debug(dl);
+    }
+    let ids = await getSavedIds(options);
+    let dlId = dl.id.toString();
+    ids[dlId] = options.auto;
+    if (options.auto)
+        await browser.storage.local.set({autoresume:ids});
+    await reloadDownloads(options, ids);
+});
+
+browser.downloads.onChanged.addListener(async (dlDelta) => {
+    if (!dlDelta.state)
+        return;
+    let options = await getSavedOptions();
+    if (options.debug)
+        console.info("autoresume: download changed: " +
+                     dlDelta.id + ": " +
+                     dlDelta.state.previous + " -> " +
+                     dlDelta.state.current);
+    if (dlDelta.state.current == "complete") {
+        // Remove from autoresume list
+        let ids = await getSavedIds(options);
+        let dlId = dlDelta.id.toString();
+        if (dlId in ids) {
+            delete ids[dlId];
+            await browser.storage.local.set({autoresume:ids});
         }
-        if (msg.command == "popup") {
-            // Send "show-downloads" message with latest list of downloads.
-            reloadDownloads();
-        } else if (msg.command == "update") {
-            // Remove download id from autoresume list if not selected.
-            // Add if selected.
-            if (autoresumeIds[msg.id] !== msg.selected) {
-                autoresumeIds[msg.id] = msg.selected;
-                browser.storage.local.set({autoresume:autoresumeIds});
-            }
-        } else if (msg.command == "options") {
-            // Send "show-options" message with current options.
-            reloadOptions();
-        } else if (msg.command == "option-auto") {
-            options.auto = msg.selected;
-            browser.storage.local.set({options:options});
-        } else if (msg.command == "option-log-events") {
-            options.logEvents = msg.selected;
-            browser.storage.local.set({options:options});
-        } else if (msg.command == "option-notify-resume") {
-            options.notifyResume = msg.selected;
-            browser.storage.local.set({options:options});
-        } else if (msg.command == "option-notify-interrupt") {
-            options.notifyInterrupt = msg.selected;
-            browser.storage.local.set({options:options});
-        } else if (msg.command == "option-interval") {
-            let interval = parseInt(msg.value);
-            // Should match option.html limits
-            if (!isNaN(interval) && interval >= 5 && interval <= 600) {
-                options.interval = interval
-                browser.storage.local.set({options:options});
-            }
-        } else if (msg.command == "option-monitor-interval") {
-            let interval = parseInt(msg.value);
-            // Should match option.html limits
-            if (!isNaN(interval) && interval >= 0 && interval <= 3600) {
-                if (interval != options.monitorInterval) {
-                    options.monitorInterval = interval
-                    browser.storage.local.set({options:options});
-                    let name = alarmPrefix + "monitor";
-                    if (interval) {
-                        let minutes = interval / 60.0;
-                        if (options.debug)
-                            console.debug("monitor alarm: " + interval + "s");
-                        browser.alarms.create(name, {periodInMinutes:minutes});
-                    } else {
-                        browser.alarms.clear(name);
-                        if (options.debug)
-                            console.debug("monitor alarm: off");
-                    }
-                    reloadDownloads();
+        await reloadDownloads(options);
+    } else if (dlDelta.state.current == "interrupted") {
+        // If a download is interrupted, see if we can restart it
+        let interval = options.interval / 60.0;
+        let name = alarmPrefix + dlDelta.id.toString();
+        browser.alarms.create(name, {delayInMinutes:interval});
+        if (options.debug) {
+            console.debug("autoresume: download " + dlDelta.id.toString() +
+                          " interrupted at " + 
+                          new Date().toLocaleTimeString());
+            console.debug(dlDelta);
+        }
+        if (options.notifyInterrupt || options.logEvents) {
+            browser.downloads.search({id:dlDelta.id}).then((dls) => {
+                if (options.debug) {
+                    console.debug("autoresume: notify interrupt");
+                    console.debug(dls);
                 }
-            }
-        } else if (msg.command == "option-notify-debug") {
-            options.debug = msg.selected;
-            browser.storage.local.set({options:options});
+                if (dls.length == 0)
+                    return;
+                let dl = dls[0];
+                let msg = "Download for " + basename(dl.filename) +
+                         " interrupted at " +
+                         new Date().toLocaleTimeString();
+                if (dl.error)
+                    msg += " (" + dl.error + ")";
+                if (options.notifyInterrupt) {
+                    let n = {type:"basic",
+                             iconUrl:"icons/autoresume-96.png",
+                             title:"Download Resumed",
+                             message:msg};
+                    browser.notifications.create(notificationId, n);
+                }
+                if (options.logEvents)
+                    console.log("autoresume: " + msg);
+            });
         }
-    });
+    }
+});
 
-    // Listen for download stopped/paused/failed events
-    // and automatically resume if possible.
-
-    browser.downloads.onCreated.addListener((dl) => {
-        if (options.debug) {
-            console.info("autoresume: download created: " +
-                         basename(dl.filename));
-            console.debug(dl);
-        }
-        let dlId = dl.id.toString();
-        autoresumeIds[dlId] = options.auto;
-        if (options.auto)
-            browser.storage.local.set({autoresume:autoresumeIds});
-        reloadDownloads();
-    });
-
-    browser.downloads.onChanged.addListener((dlDelta) => {
-        if (!dlDelta.state)
-            return;
-        if (options.debug)
-            console.info("autoresume: download changed: " +
-                         dlDelta.id + ": " +
-                         dlDelta.state.previous + " -> " +
-                         dlDelta.state.current);
-        if (dlDelta.state.current == "complete") {
-            // Remove from autoresume list
-            let dlId = dlDelta.id.toString();
-            if (dlId in autoresumeIds) {
-                delete autoresumeIds[dlId];
-                browser.storage.local.set({autoresume:autoresumeIds});
-            }
-            reloadDownloads();
-        } else if (dlDelta.state.current == "interrupted") {
-            // If a download is interrupted, see if we can restart it
-            let interval = options.interval / 60.0;
-            let name = alarmPrefix + dlDelta.id.toString();
-            browser.alarms.create(name, {delayInMinutes:interval});
-            if (options.debug) {
-                console.debug("autoresume: download " + dlDelta.id.toString() +
-                              " interrupted at " + 
-                              new Date().toLocaleTimeString());
-                console.debug(dlDelta);
-            }
-            if (options.notifyInterrupt || options.logEvents) {
-                browser.downloads.search({id:dlDelta.id}).then((dls) => {
-                    if (options.debug) {
-                        console.debug("autoresume: notify interrupt");
-                        console.debug(dls);
-                    }
-                    if (dls.length == 0)
-                        return;
-                    let dl = dls[0];
+browser.alarms.onAlarm.addListener(async (alarmInfo) => {
+    let options = await getSavedOptions();
+    if (options.debug)
+        console.debug("autoresume: received alarm: " + alarmInfo.name);
+    if (!alarmInfo.name.startsWith(alarmPrefix))
+        return;
+    let name = alarmInfo.name.substring(alarmPrefix.length);
+    if (name == "monitor") {
+        if (options.logEvents)
+            console.info("autoresume: update download rates");
+        let ids = await getSavedIds(options);
+        await reloadDownloads(options, ids);
+        return;
+    }
+    let id = parseInt(name);
+    browser.downloads.search({id:id}).then((dls) => {
+        // There should only be one item in dls array
+        for (let dl of dls) {
+            if (dl.state == "interrupted" && dl.canResume) {
+                if (options.notifyResume || options.logEvents) {
                     let msg = "Download for " + basename(dl.filename) +
-                             " interrupted at " +
-                             new Date().toLocaleTimeString();
-                    if (dl.error)
-                        msg += " (" + dl.error + ")";
-                    if (options.notifyInterrupt) {
+                              " resumed at " +
+                              new Date().toLocaleTimeString();
+                    if (options.notifyResume) {
                         let n = {type:"basic",
                                  iconUrl:"icons/autoresume-96.png",
                                  title:"Download Resumed",
@@ -201,89 +261,9 @@
                     }
                     if (options.logEvents)
                         console.log("autoresume: " + msg);
-                });
+                }
+                browser.downloads.resume(dl.id).then(onResume, onError);
             }
         }
     });
-
-    browser.alarms.onAlarm.addListener((alarmInfo) => {
-        if (options.debug)
-            console.debug("autoresume: alarm");
-        if (!alarmInfo.name.startsWith(alarmPrefix))
-            return;
-        let name = alarmInfo.name.substring(alarmPrefix.length);
-        if (name == "monitor") {
-            if (options.logEvents)
-                console.log("autoresume: update download rates");
-            reloadDownloads();
-            return;
-        }
-        let id = parseInt(name);
-        browser.downloads.search({id:id}).then((dls) => {
-            // There should only be one item in dls array
-            for (let dl of dls) {
-                if (dl.state == "interrupted" && dl.canResume) {
-                    if (options.notifyResume || options.logEvents) {
-                        let msg = "Download for " + basename(dl.filename) +
-                                  " resumed at " +
-                                  new Date().toLocaleTimeString();
-                        if (options.notifyResume) {
-                            let n = {type:"basic",
-                                     iconUrl:"icons/autoresume-96.png",
-                                     title:"Download Resumed",
-                                     message:msg};
-                            browser.notifications.create(notificationId, n);
-                        }
-                        if (options.logEvents)
-                            console.log("autoresume: " + msg);
-                    }
-                    browser.downloads.resume(dl.id).then(onResume, onError);
-                }
-            }
-        });
-    });
-
-    // Restore options state
-    browser.storage.local.get({'options':options}, (result) => {
-        for (let opt in result.options)
-            options[opt] = result.options[opt];
-    });
-
-    // Restore list of monitored downloads
-    browser.storage.local.get({'autoresume':autoresumeIds}, (result) => {
-        if (options.debug)
-            console.info("autoresume: restored state");
-        autoresumeIds = result.autoresume;
-        browser.downloads.search({}).then((dls) => {
-            let changed = false;
-            // Remove all no-longer-present or complete downloads
-            for (let dlId in autoresumeIds) {
-                let dl = dls.find((d) => d.id.toString() == dlId);
-                if (!dl || dl.state == "complete") {
-                    delete autoresumeIds[dlId];
-                    changed = true;
-                }
-            }
-            // Add any new downloads if automatic-resume is on
-            for (let dl of dls) {
-                if (dl.state != "complete") {
-                    let dlId = dl.id.toString();
-                    if (!(dlId in autoresumeIds)) {
-                        autoresumeIds[dlId] = options.auto;
-                        changed = true;
-                    }
-                }
-            }
-            if (changed)
-                browser.storage.local.set({autoresume:autoresumeIds});
-        });
-    });
-
-    // Start monitor alarm if needed
-    if (options["monitorInterval"]) {
-        let name = alarmPrefix + "monitor";
-        let interval = options.monitorInterval / 60.0;
-        browser.alarms.create(name, {periodInMinutes:interval});
-    }
-
-})();
+});

@@ -4,6 +4,8 @@
 
 (function() {
 
+    const alarmPrefix = "autoresume-";
+
     // console.info("autoresume: init popup script");
 
     function downloadCB(ev) {
@@ -33,18 +35,15 @@
             checkbox.className = "autoresume";
             checkbox.checked = auto[dlId];
             checkbox.addEventListener("change", downloadCB);
+            activeDownloads.appendChild(checkbox);
             let img = document.createElement("img");
             img.className = "download-state";
             if (dl.state == "in_progress")
                 img.src = "../icons/status-running.png";
             else
                 img.src = "../icons/status-stopped.png";
-            let label = document.createElement("label");
-            let filename = dl.filename.replace(/^.*[\\\/]/, '');
-            let br = document.createElement("br");
-            activeDownloads.appendChild(checkbox);
             activeDownloads.appendChild(img);
-            activeDownloads.appendChild(label);
+            let filename = dl.filename.replace(/^.*[\\\/]/, '');
             if (options.monitorInterval) {
                 // Estimate the download rate and time remaining
                 // using the overall rate so far
@@ -52,7 +51,7 @@
                 let start = new Date(dl.startTime);
                 let dlTime = (now - start) / 1000;
                 let dlRate = dl.bytesReceived / dlTime;    // B/sec
-                let msg = filename + " (";
+                let msg = "(";
                 if (dlRate > 1000000)
                     msg += (dlRate / 1000000).toFixed(1) + " MB/s";
                 else if (dlRate > 1000)
@@ -75,14 +74,23 @@
                         rem = secondsLeft + "s ";
                     msg += ", " + rem + "left";
                 }
-                msg += ")";
-                let rate = document.createElement("span");
-                rate.textContent = msg;
-                activeDownloads.appendChild(rate);
+                msg += ") ";
+                let label = document.createElement("div");
+                label.className = "download-label";
+                activeDownloads.appendChild(label);
+                let fileLabel = document.createElement("label");
+                fileLabel.textContent = filename;
+                label.appendChild(fileLabel);
+                label.appendChild(document.createElement("br"));
+                let rateLabel = document.createElement("label");
+                rateLabel.textContent = msg;
+                label.appendChild(rateLabel);
             } else {
+                let label = document.createElement("label");
                 label.textContent = filename;
+                activeDownloads.appendChild(label);
             }
-            activeDownloads.appendChild(br);
+            activeDownloads.appendChild(document.createElement("br"));
             count += 1;
         }
         if (count == 0) {
@@ -97,14 +105,30 @@
             browser.runtime.openOptionsPage();
         });
 
-        browser.runtime.onMessage.addListener((msg) => {
+        browser.runtime.onMessage.addListener(async (msg, sender, respond) => {
             // console.info("autoresume: popup received command: " +
             //              msg.command);
             // console.debug(msg);
-            if (msg.command == "show-downloads")
+            if (msg.command == "show-downloads") {
                 showDownloads(msg.downloads, msg.auto, msg.options);
+                let name = alarmPrefix + "monitor";
+                if (msg.options.monitorInterval) {
+                    let pim = msg.options.monitorInterval / 60.0;
+                    // console.debug("monitor period is " + pim + " minutes");
+                    await browser.alarms.create(name, {periodInMinutes:pim});
+                } else {
+                    // console.debug("monitor is off");
+                    await browser.alarms.clear(name);
+                }
+            }
+            await respond(true);
         });
         browser.runtime.sendMessage({command:"popup"});
+    });
+
+    window.addEventListener("pagehide", async (event) => {
+        let name = alarmPrefix + "monitor";
+        browser.runtime.sendMessage({command:"popdown", alarm:name});
     });
 
 })();

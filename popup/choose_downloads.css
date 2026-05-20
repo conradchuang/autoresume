@@ -1,8 +1,6 @@
 html, body {
 	width: 30em;
 	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 .downloads-header {
@@ -13,6 +11,7 @@ html, body {
 .downloads-footnote {
 	float: right;
 	padding-top: 0.2rem;
+	padding-bottom: 0.3rem;
 	font-size: small;
 }
 
@@ -22,12 +21,25 @@ html, body {
 	height: 0.8rem;
 }
 
+.download-label {
+	display: inline-block;
+	vertical-align: middle;
+}
+
+.download-file {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 .hidden {
 	display: none;
 }
 
 .options {
-	float: right;
+	position: fixed;
+	right: 5px;
+	width: 24px;
 }
 
 .button {

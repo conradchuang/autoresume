@@ -14,6 +14,14 @@
 	"optional_permissions": [
 		"notifications"
 	],
+	"browser_specific_settings": {
+		"gecko": {
+			"id": "{c16f5efa-1d76-4741-a35b-9876f16ad089}",
+			"data_collection_permissions": {
+				"required": ["none"]
+			}
+		}
+	},
 	"browser_action": {
 		"default_icon": "icons/autoresume-32.png",
 		"default_title": "Auto Resume Download",
