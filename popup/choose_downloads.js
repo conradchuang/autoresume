@@ -29,20 +29,23 @@
             // If download is finished, we should not display it.
             if (dl.state == "complete")
                 continue;
+            let status = document.createElement("div");
+            status.className = "download-status";
             let checkbox = document.createElement("input");
             checkbox.setAttribute("type", "checkbox");
             checkbox.value = dlId;
             checkbox.className = "autoresume";
             checkbox.checked = auto[dlId];
             checkbox.addEventListener("change", downloadCB);
-            activeDownloads.appendChild(checkbox);
+            status.appendChild(checkbox);
             let img = document.createElement("img");
             img.className = "download-state";
             if (dl.state == "in_progress")
                 img.src = "../icons/status-running.png";
             else
                 img.src = "../icons/status-stopped.png";
-            activeDownloads.appendChild(img);
+            status.appendChild(img);
+            activeDownloads.appendChild(status);
             let filename = dl.filename.replace(/^.*[\\\/]/, '');
             if (options.monitorInterval) {
                 // Estimate the download rate and time remaining
@@ -77,14 +80,8 @@
                 msg += ") ";
                 let label = document.createElement("div");
                 label.className = "download-label";
+                label.textContent = filename + " " + msg;
                 activeDownloads.appendChild(label);
-                let fileLabel = document.createElement("label");
-                fileLabel.textContent = filename;
-                label.appendChild(fileLabel);
-                label.appendChild(document.createElement("br"));
-                let rateLabel = document.createElement("label");
-                rateLabel.textContent = msg;
-                label.appendChild(rateLabel);
             } else {
                 let label = document.createElement("label");
                 label.textContent = filename;
