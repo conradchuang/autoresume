@@ -58,20 +58,24 @@ async function getSavedIds(options) {
 
 async function reloadDownloads(options, ids) {
     let query = {"orderBy": ["-startTime"]};
-    function show(dls) {
-        msg = {command:"show-downloads",
-               downloads:dls,
-               auto:ids,
-               options:options};
-        browser.runtime.sendMessage(msg);
+    async function show(dls) {
+        let msg = {command:"show-downloads",
+                   downloads:dls,
+                   auto:ids,
+                   options:options};
+        return browser.runtime.sendMessage(msg).then(ignore, ignore);
     }
-    await browser.downloads.search(query).then(show, onError);
+    return await browser.downloads.search(query).then(show, onError);
 }
 
 async function reloadOptions(options) {
     msg = {command:"show-options",
            options:options};
-    await browser.runtime.sendMessage(msg);
+    await browser.runtime.sendMessage(msg).then(ignore, ignore);
+}
+
+function ignore(value) {
+    return;
 }
 
 function onResume() {
