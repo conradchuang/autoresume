@@ -109,7 +109,7 @@
             if (msg.command == "show-downloads") {
                 showDownloads(msg.downloads, msg.auto, msg.options);
                 let name = alarmPrefix + "monitor";
-                if (msg.options.monitorInterval) {
+                if (msg.options.monitorInterval && Object.keys(msg.auto) > 0) {
                     let pim = msg.options.monitorInterval / 60.0;
                     // console.debug("monitor period is " + pim + " minutes");
                     await browser.alarms.create(name, {periodInMinutes:pim});
