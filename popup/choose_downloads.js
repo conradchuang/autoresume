@@ -111,10 +111,18 @@
                 let name = alarmPrefix + "monitor";
                 if (msg.options.monitorInterval && Object.keys(msg.auto) > 0) {
                     let pim = msg.options.monitorInterval / 60.0;
-                    // console.debug("monitor period is " + pim + " minutes");
-                    await browser.alarms.create(name, {periodInMinutes:pim});
+                    await browser.alarms.get(name).then(async (alarm) => {
+                        if (!alarm) {
+                            if (msg.options.debug)
+                                console.debug("create alarm: " + name +
+                                              " period: " + pim + " minutes");
+                            return browser.alarms.create(name,
+                                                        {periodInMinutes:pim});
+                        }
+                    });
                 } else {
-                    // console.debug("monitor is off");
+                    if (msg.options.debug)
+                        console.debug("clear alarm: " + name);
                     await browser.alarms.clear(name);
                 }
             }
