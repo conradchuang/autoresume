@@ -32,6 +32,7 @@ html, body {
 
 .download-label {
 	display: table-cell;
+	word-break: break-all;
 	vertical-align: middle;
 }
 
