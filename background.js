@@ -2,9 +2,11 @@
 // vim: set autoindent expandtab ts=4 sw=4 sts=4:
 //
 
-console.debug("autoresume: init background script");
+// console.debug("autoresume: init background script");
 
 const alarmPrefix = "autoresume-";
+const alarmMonitor = alarmPrefix + "monitor";
+const alarmPopup = alarmPrefix + "popup";
 const notificationId = "Auto Resume Notification";
 
 // Restore options state
@@ -63,9 +65,9 @@ async function reloadDownloads(options, ids) {
                    downloads:dls,
                    auto:ids,
                    options:options};
-        return browser.runtime.sendMessage(msg).then(ignore, ignore);
+        await browser.runtime.sendMessage(msg).then(ignore, ignore);
     }
-    return await browser.downloads.search(query).then(show, onError);
+    await browser.downloads.search(query).then(show, onError);
 }
 
 async function reloadOptions(options) {
@@ -102,8 +104,6 @@ browser.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
         // Send "show-downloads" message with latest list of downloads.
         let ids = await getSavedIds(options);
         await reloadDownloads(options, ids);
-    } else if (msg.command == "popdown") {
-        await browser.alarms.clear(msg.alarm);
     } else if (msg.command == "update") {
         // Remove download id from autoresume list if not selected.
         // Add if selected.
@@ -140,13 +140,14 @@ browser.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
         if (!isNaN(interval) && interval >= 0 && interval <= 3600) {
             if (interval != options.monitorInterval) {
                 options.monitorInterval = interval
-                await browser.storage.local.set({options:options});
-                if (options.debug) {
-                    if (interval)
-                        console.debug("monitor alarm: " + interval + "s");
-                    else
-                        console.debug("monitor alarm: off");
-                }
+                browser.storage.local.set({options:options}).then(() => {
+                    if (options.debug) {
+                        if (interval)
+                            console.debug("monitor alarm: " + interval + "s");
+                        else
+                            console.debug("monitor alarm: off");
+                    }
+                });
                 let ids = await getSavedIds(options);
                 await reloadDownloads(options, ids);
             }
@@ -156,6 +157,7 @@ browser.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
         await browser.storage.local.set({options:options});
     }
     sendResponse(true);
+    return true;
 });
 
 // Listen for download stopped/paused/failed events
@@ -200,7 +202,7 @@ browser.downloads.onChanged.addListener(async (dlDelta) => {
         let name = alarmPrefix + dlDelta.id.toString();
         browser.alarms.create(name, {delayInMinutes:interval});
         if (options.debug) {
-            console.debug("autoresume: download " + dlDelta.id.toString() +
+            console.info("autoresume: download " + dlDelta.id.toString() +
                           " interrupted at " + 
                           new Date().toLocaleTimeString());
             console.debug(dlDelta);
@@ -239,14 +241,14 @@ browser.alarms.onAlarm.addListener(async (alarmInfo) => {
         console.debug("autoresume: received alarm: " + alarmInfo.name);
     if (!alarmInfo.name.startsWith(alarmPrefix))
         return;
-    let name = alarmInfo.name.substring(alarmPrefix.length);
-    if (name == "monitor") {
+    if (alarmInfo.name == alarmMonitor) {
         if (options.logEvents)
             console.info("autoresume: update download rates");
         let ids = await getSavedIds(options);
         await reloadDownloads(options, ids);
         return;
     }
+    let name = alarmInfo.name.substring(alarmPrefix.length);
     let id = parseInt(name);
     browser.downloads.search({id:id}).then((dls) => {
         // There should only be one item in dls array
@@ -270,4 +272,22 @@ browser.alarms.onAlarm.addListener(async (alarmInfo) => {
             }
         }
     });
+});
+
+// Popup script creates a port when it starts up.
+// We use its life cycle to update and clean up as needed.
+browser.runtime.onConnect.addListener((port) => {
+    if (port.name === alarmPopup) {
+        // console.log("popup created");
+        port.onDisconnect.addListener(() => {
+            // console.log("popup died");
+            browser.alarms.clear(alarmMonitor);
+            return true;
+        });
+        getSavedOptions().then((options) => {
+            getSavedIds(options).then((ids) => {
+                reloadDownloads(options, ids);
+            });
+        });
+    }
 });
