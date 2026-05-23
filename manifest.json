@@ -1,7 +1,8 @@
 {
-	"manifest_version": 2,
+	"manifest_version": 3,
 	"name": "Auto Resume Downloads",
-	"version": "1.0.5",
+	"version": "1.0.6",
+	"version name": "1.0.6 beta",
 	"description": "Automatically resume interrupted downloads.",
 	"icons": {
 		"48": "icons/autoresume-48.png"
@@ -22,17 +23,15 @@
 			}
 		}
 	},
-	"browser_action": {
+	"action": {
 		"default_icon": "icons/autoresume-32.png",
 		"default_title": "Auto Resume Download",
 		"default_popup": "popup/choose_downloads.html"
 	},
 	"options_ui": {
-		"page": "options/options.html",
-		"browser_style": true
+		"page": "options/options.html"
 	},
 	"background": {
-		"scripts": ["background.js"],
-		"persistent": false
+		"scripts": ["background.js"]
 	}
 }
