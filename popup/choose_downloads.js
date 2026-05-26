@@ -32,6 +32,9 @@ function showDownloads(downloads, auto, options) {
         // If download is finished, we should not display it.
         if (dl.state == "complete")
             continue;
+        let row = document.createElement("div");
+        row.className = "download-row";
+        activeDownloads.appendChild(row);
         let status = document.createElement("div");
         status.className = "download-status";
         let checkbox = document.createElement("input");
@@ -48,7 +51,7 @@ function showDownloads(downloads, auto, options) {
         else
             img.src = "../icons/status-stopped.png";
         status.appendChild(img);
-        activeDownloads.appendChild(status);
+        row.appendChild(status);
         let filename = dl.filename.replace(/^.*[\\\/]/, '');
         if (options.monitorInterval) {
             // Estimate the download rate and time remaining
@@ -84,13 +87,12 @@ function showDownloads(downloads, auto, options) {
             let label = document.createElement("div");
             label.className = "download-label";
             label.textContent = filename + " " + msg;
-            activeDownloads.appendChild(label);
+            row.appendChild(label);
         } else {
             let label = document.createElement("label");
             label.textContent = filename;
-            activeDownloads.appendChild(label);
+            row.appendChild(label);
         }
-        activeDownloads.appendChild(document.createElement("br"));
         count += 1;
     }
     if (count == 0) {

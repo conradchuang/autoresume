@@ -18,6 +18,10 @@ html, body {
 	display: table;
 }
 
+.download-row {
+	display: table-row;
+}
+
 .download-status {
 	display: table-cell;
 	white-space: nowrap;
