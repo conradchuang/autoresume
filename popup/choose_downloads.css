@@ -1,17 +1,10 @@
-html, body {
-	width: 25em;
+#popup-content {
+	min-width: 11rem;
 }
 
 .downloads-header {
 	margin-top: 0rem;
 	margin-bottom: 0.5rem;
-}
-
-.downloads-footnote {
-	float: right;
-	padding-top: 0.2rem;
-	padding-bottom: 0.3rem;
-	font-size: small;
 }
 
 .active-downloads {
@@ -38,6 +31,16 @@ html, body {
 	display: table-cell;
 	word-break: break-all;
 	vertical-align: middle;
+}
+
+.download-filename {
+	word-break: break-all;
+}
+
+.download-rate {
+	word-break: break-all;
+	font-size: smaller;
+	filter: opacity(70%);
 }
 
 .hidden {

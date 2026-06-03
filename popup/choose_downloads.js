@@ -54,19 +54,26 @@ function showDownloads(downloads, auto, options) {
         row.appendChild(status);
         let filename = dl.filename.replace(/^.*[\\\/]/, '');
         if (options.monitorInterval) {
+            let label = document.createElement("div");
+            label.className = "download-label";
+            let fn = document.createElement("div");
+            fn.textContent = filename;
+            fn.className = "download-filename";
+            label.appendChild(fn);
             // Estimate the download rate and time remaining
             // using the overall rate so far
             let now = new Date();
             let start = new Date(dl.startTime);
             let dlTime = (now - start) / 1000;
             let dlRate = dl.bytesReceived / dlTime;    // B/sec
-            let msg = "(";
+            let rate = "";
             if (dlRate > 1000000)
-                msg += (dlRate / 1000000).toFixed(1) + " MB/s";
+                rate += (dlRate / 1000000).toFixed(1) + " MB/s";
             else if (dlRate > 1000)
-                msg += (dlRate / 1000).toFixed(0) + " kB/s";
+                rate += (dlRate / 1000).toFixed(0) + " kB/s";
             else
-                msg += dlRate.toFixed(0) + " B/s";
+                rate += dlRate.toFixed(0) + " B/s";
+            let msg = "";
             if (dl.totalBytes && dl.totalBytes > 0) {
                 let bytesLeft = dl.totalBytes - dl.bytesReceived;
                 let secondsLeft = Math.trunc(bytesLeft / dlRate);
@@ -81,12 +88,15 @@ function showDownloads(downloads, auto, options) {
                     rem += minutesLeft + "m ";
                 if (!rem)
                     rem = secondsLeft + "s ";
-                msg += ", " + rem + "left";
-            }
-            msg += ") ";
-            let label = document.createElement("div");
-            label.className = "download-label";
-            label.textContent = filename + " " + msg;
+                rem += "left";
+                let pct = Math.round(dl.bytesReceived / dl.totalBytes * 100);
+                msg = rem + ", " + pct + "% @ " + rate;
+            } else
+                msg = rate;
+            let rem = document.createElement("div");
+            rem.textContent = msg;
+            rem.className = "download-rate";
+            label.appendChild(rem);
             row.appendChild(label);
         } else {
             let label = document.createElement("label");
@@ -96,9 +106,10 @@ function showDownloads(downloads, auto, options) {
         count += 1;
     }
     if (count == 0) {
-        let p = document.createElement("p");
-        p.textContent = "No active downloads.";
-        activeDownloads.appendChild(p);
+        let row = document.createElement("div");
+        row.textContent = "No active downloads.";
+        row.className = "download-row";
+        activeDownloads.appendChild(row);
     }
 }
 

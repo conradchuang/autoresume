@@ -8,3 +8,9 @@
 	max-width: 100%;
 	float: right;
 }
+
+.options-footnote {
+	float: right;
+	padding-top: 1rem;
+	font-size: small;
+}

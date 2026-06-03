@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Auto Resume Downloads",
-	"version": "1.0.7",
+	"version": "1.0.8",
 	"description": "Automatically resume interrupted downloads.",
 	"icons": {
 		"48": "icons/autoresume-48.png"
