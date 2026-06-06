@@ -23,6 +23,33 @@ function downloadCB(ev) {
     // console.debug(msg);
 }
 
+function displaySize(value, divisor) {
+    let v = value / divisor;
+    // parseFloat will remove trailing 0s
+    return Number.parseFloat(v.toPrecision(3));
+}
+
+function displayUnit(value) {
+    let divisor, unit;
+    if (value >= 1000000000) {
+        divisor = 1000000000;
+        unit = "GB";
+    } else if (value >= 1000000) {
+        divisor = 1000000;
+        unit = "MB";
+    } else if (value >= 1000) {
+        divisor = 1000;
+        unit = "KB";
+    } else {
+        divisor = 1;
+        unit = "B";
+    }
+    return {
+        divisor: divisor,
+        unit: unit
+    };
+}
+
 function showDownloads(downloads, auto, options) {
     let activeDownloads = document.body.querySelector(".active-downloads");
     activeDownloads.replaceChildren();
@@ -90,7 +117,12 @@ function showDownloads(downloads, auto, options) {
                     rem = secondsLeft + "s ";
                 rem += "left";
                 let pct = Math.round(dl.bytesReceived / dl.totalBytes * 100);
-                msg = rem + ", " + pct + "% @ " + rate;
+                let u = displayUnit(dl.totalBytes);
+                let recv = displaySize(dl.bytesReceived, u.divisor);
+                let total = displaySize(dl.totalBytes, u.divisor);
+                msg = rem + " \u2013 " +
+                      recv + " of " + total + " " + u.unit + ", " +
+                      pct + "% @ " + rate;
             } else
                 msg = rate;
             let rem = document.createElement("div");
