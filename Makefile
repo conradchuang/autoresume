@@ -4,7 +4,9 @@ FILES=	manifest.json \
 	icons \
 	popup \
 	options
-IGNORE=	icons/autoresume-512.png
+IGNORE=	icons/autoresume-512.png \
+	icons/settings-48.png \
+	icons/settings-600.png
 
 # Description to use in Firefox extension descriptor
 DESC=	When a download is interrupted, this extension checks whether it can be resumed. If so, it can be automatically restarted after a short wait interval. Notifications, logging and wait interval can all be adjusted via extension options.
