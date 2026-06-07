@@ -1,5 +1,15 @@
+:root {
+	color-scheme: light dark;
+}
+
+body {
+	background-color: Canvas;
+	color: CanvasText;
+}
+
 #popup-content {
-	min-width: 11rem;
+	font-family: sans-serif;
+	min-width: 12rem;
 }
 
 .downloads-header {
@@ -9,6 +19,8 @@
 
 .active-downloads {
 	display: table;
+	border-collapse: separate;
+	border-spacing: 0.2rem;
 }
 
 .download-row {
@@ -17,7 +29,6 @@
 
 .download-status {
 	display: table-cell;
-	white-space: nowrap;
 	vertical-align: middle;
 }
 
@@ -25,22 +36,24 @@
 	margin-left: 0.3rem;
 	margin-right: 0.3rem;
 	height: 0.8rem;
+	mix-blend-mode: difference;
 }
 
 .download-label {
 	display: table-cell;
-	word-break: break-all;
-	vertical-align: middle;
 }
 
 .download-filename {
-	word-break: break-all;
+	font-size: small;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 28rem;
 }
 
 .download-rate {
-	word-break: break-all;
 	font-size: smaller;
-	filter: opacity(70%);
+	filter: opacity(60%);
 }
 
 .hidden {
