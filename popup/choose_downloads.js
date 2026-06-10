@@ -56,8 +56,9 @@ function showDownloads(downloads, auto, options) {
     let count = 0;
     for (let dl of downloads) {
         let dlId = dl.id.toString();
-        // If download is finished, we should not display it.
-        if (dl.state == "complete")
+        // If download is not in progress and cannot be resumed,
+        // we do not bother to display it.
+        if (dl.state != "in_progress" && !dl.canResume)
             continue;
         let row = document.createElement("div");
         row.className = "download-row";

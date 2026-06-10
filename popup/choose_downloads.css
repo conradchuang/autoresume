@@ -64,6 +64,7 @@ body {
 	position: fixed;
 	right: 5px;
 	width: 24px;
+	mix-blend-mode: difference;
 }
 
 .button {
