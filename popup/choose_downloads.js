@@ -50,7 +50,7 @@ function displayUnit(value) {
     };
 }
 
-function showDownloads(downloads, auto, options) {
+function showDownloads(downloads, dlInfo, options) {
     let activeDownloads = document.body.querySelector(".active-downloads");
     activeDownloads.replaceChildren();
     let count = 0;
@@ -69,7 +69,7 @@ function showDownloads(downloads, auto, options) {
         checkbox.setAttribute("type", "checkbox");
         checkbox.value = dlId;
         checkbox.className = "autoresume";
-        checkbox.checked = auto[dlId];
+        checkbox.checked = dlInfo[dlId].auto;
         checkbox.addEventListener("change", downloadCB);
         status.appendChild(checkbox);
         let img = document.createElement("img");
@@ -91,9 +91,10 @@ function showDownloads(downloads, auto, options) {
             // Estimate the download rate and time remaining
             // using the overall rate so far
             let now = new Date();
-            let start = new Date(dl.startTime);
+            let start = new Date(dlInfo[dlId].initTime);
             let dlTime = (now - start) / 1000;
-            let dlRate = dl.bytesReceived / dlTime;    // B/sec
+            let dlRate = (dl.bytesReceived - dlInfo[dlId].initSize) / dlTime;
+                            // B/sec
             let rate = "";
             if (dlRate > 1000000)
                 rate += (dlRate / 1000000).toFixed(1) + " MB/s";

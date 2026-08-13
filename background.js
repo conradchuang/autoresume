@@ -47,8 +47,10 @@ async function getSavedIds(options) {
     for (let dl of dls) {
         if (dl.state != "complete") {
             let dlId = dl.id.toString();
-            if (!(dlId in ids)) {
-                ids[dlId] = options.auto;
+            if (!(dlId in ids) || ids[dlId].auto === undefined) {
+                ids[dlId] = { auto: options.auto,
+                              initTime: dl.startTime,
+                              initSize: dl.bytesReceived };
                 changed = true;
             }
         }
@@ -108,8 +110,8 @@ browser.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
         // Remove download id from autoresume list if not selected.
         // Add if selected.
         let ids = await getSavedIds(options);
-        if (ids[msg.id] !== msg.selected) {
-            ids[msg.id] = msg.selected;
+        if (ids[msg.id].auto !== msg.selected) {
+            ids[msg.id].auto = msg.selected;
             await browser.storage.local.set({autoresume:ids});
         }
     } else if (msg.command == "options") {
@@ -137,7 +139,7 @@ browser.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
     } else if (msg.command == "option-monitor-interval") {
         let interval = parseInt(msg.value);
         // Should match option.html limits
-        if (!isNaN(interval) && interval >= 0 && interval <= 3600) {
+        if (!isNaN(interval) && interval >= 0 && interval <= 60) {
             if (interval != options.monitorInterval) {
                 options.monitorInterval = interval
                 browser.storage.local.set({options:options}).then(() => {
@@ -171,10 +173,13 @@ browser.downloads.onCreated.addListener(async (dl) => {
         console.debug(dl);
     }
     let ids = await getSavedIds(options);
+    /*
+    // TODO: This should already have happened in getSavedIds
     let dlId = dl.id.toString();
     ids[dlId] = options.auto;
     if (options.auto)
         await browser.storage.local.set({autoresume:ids});
+    */
     await reloadDownloads(options, ids);
 });
 

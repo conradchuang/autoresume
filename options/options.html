@@ -42,7 +42,8 @@
     </div>
     <div>
       <div class="option-div">
-	<input type="number" id="option-interval" class="option-input"
+	<input type="number" id="option-interval"
+	       class="option-input option-input-number"
 	       min="5" max="3600" step="5" value="30"/>
       </div>
       <label for="option-interval">
@@ -50,8 +51,9 @@
     </div>
     <div>
       <div class="option-div">
-	<input type="number" id="option-monitor-interval" class="option-input"
-	       min="0" max="3600" step="30" value="30"/>
+	<input type="number" id="option-monitor-interval"
+	       class="option-input option-input-number"
+	       min="0" max="60" step="1" value="5"/>
       </div>
       <label for="option-monitor-interval">
 	Frequency (in seconds) for updating download rate

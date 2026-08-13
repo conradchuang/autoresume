@@ -9,6 +9,10 @@
 	float: right;
 }
 
+.option-input-number {
+	min-width: 4rem;
+}
+
 .options-footnote {
 	float: right;
 	padding-top: 1rem;
