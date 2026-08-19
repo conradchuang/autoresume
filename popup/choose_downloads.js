@@ -119,12 +119,12 @@ function showDownloads(downloads, dlInfo, options) {
                     rem = secondsLeft + "s ";
                 rem += "left";
                 let pct = Math.round(dl.bytesReceived / dl.totalBytes * 100);
-                let u = displayUnit(dl.totalBytes);
-                let recv = displaySize(dl.bytesReceived, u.divisor);
-                let total = displaySize(dl.totalBytes, u.divisor);
-                msg = rem + " \u2013 " +
-                      recv + " of " + total + " " + u.unit + ", " +
-                      pct + "% @ " + rate;
+                let ru = displayUnit(dl.bytesReceived);
+                let recv = displaySize(dl.bytesReceived, ru.divisor);
+                let tu = displayUnit(dl.totalBytes);
+                let total = displaySize(dl.totalBytes, tu.divisor);
+                msg = rem + " \u2013 " + recv + ru.unit + " of " +
+                      total + tu.unit + ", " + pct + "% @ " + rate;
             } else
                 msg = rate;
             let rem = document.createElement("div");
