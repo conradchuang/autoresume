@@ -159,22 +159,6 @@ browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // console.debug(msg);
     if (msg.command == "show-downloads") {
         showDownloads(msg.downloads, msg.auto, msg.options);
-        if (msg.options.monitorInterval && Object.keys(msg.auto) > 0) {
-            let pim = msg.options.monitorInterval / 60.0;
-            browser.alarms.get(alarmMonitor).then(async (alarm) => {
-                if (!alarm) {
-                    if (msg.options.debug)
-                        console.debug("create alarm: " + alarmMonitor +
-                                      " period: " + pim + " minutes");
-                    browser.alarms.create(alarmMonitor,
-                                                {periodInMinutes:pim});
-                }
-            });
-        } else {
-            if (msg.options.debug)
-                console.debug("clear alarm: " + alarmMonitor);
-            browser.alarms.clear(alarmMonitor);
-        }
     }
     sendResponse(true);
     return true;

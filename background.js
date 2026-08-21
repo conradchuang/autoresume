@@ -9,6 +9,100 @@ const alarmMonitor = alarmPrefix + "monitor";
 const alarmPopup = alarmPrefix + "popup";
 const notificationId = "Auto Resume Notification";
 
+// Get logo for compositing with progress icon
+const logoImage = new Image();
+logoImage.src = "icons/autoresume-48.png";
+
+// Color handling routines
+function hexToHsl(hex) {
+    let r = parseInt(hex.slice(1, 3), 16) / 255;
+    let g = parseInt(hex.slice(3, 5), 16) / 255;
+    let b = parseInt(hex.slice(5, 7), 16) / 255;
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) { h = s = 0; } else {
+        let d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    let c = (1 - Math.abs(2 * l - 1)) * s;
+    let x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    let m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+    else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+    else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+    else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+    else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+    else if (300 <= h && h < 360) { r = c; g = 0; b = x; }
+    const toHex = x => Math.round((x + m) * 255).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function generateSplitIconColor(originalHex) {
+    const { h, s, l } = hexToHsl(originalHex);
+    let topLightness = l > 50 ? 20 : 85;
+    let topSaturation = l > 50 ? Math.max(s, 75) : Math.max(s, 85);
+    return hslToHex(h, topSaturation, topLightness);
+}
+
+// Redraw progress in icon
+function drawIcon(progress) {
+    // Create context for rendering icon
+    const canvas = document.createElement("canvas");
+    const width = logoImage.width;
+    canvas.width = width;
+    const height = logoImage.height;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+
+    // Get the alternate color.  Should get the color from
+    // the image, but we "know" the correct color.
+    const altColor = generateSplitIconColor("#0099FF");
+
+    // The idea is that the download starts with Firefox theme blue
+    // and turns to default color depending on progress. When the
+    // dowload is near complete, there should be almost no Firefox blue.
+
+    // 1. Draw the logo
+    ctx.drawImage(logoImage, 0, 0, width, height);
+
+    if (progress >= 0) {
+        // 2. Draw the progress fill draining from top to bottom
+        const fillHeight = height * (1.0 - progress);
+        const fillY = height - fillHeight;
+        ctx.fillStyle = altColor;
+        ctx.fillRect(0, fillY, width, fillHeight);
+
+        // 3. Use the logo as a mask to remove unwanted fill
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.drawImage(logoImage, 0, 0, width, height);
+        ctx.globalCompositeOperation = "source-over";
+    }
+
+    // 5. Extract pixel data and update icon
+    const imageData = ctx.getImageData(0, 0, width, height);
+    browser.action.setIcon({ imageData: imageData });
+}
+
+// Update progress in icon
+async function updateProgress(progress) {
+    if (!logoImage.complete)
+        logoImage.onload = () => drawIcon(progress);
+    else
+        drawIcon(progress);
+}
+
 // Restore options state
 async function getSavedOptions() {
     // value for options should match those in popup/choose_downloads.html
@@ -63,13 +157,51 @@ async function getSavedIds(options) {
 async function reloadDownloads(options, ids) {
     let query = {"orderBy": ["-startTime"]};
     async function show(dls) {
+        let totalSize = 0;
+        let totalRecv = 0;
+        for (let dl of dls) {
+            if (dl.state != "in_progress" && dl.state != "interrupted")
+                continue;
+            totalSize += dl.totalBytes;
+            totalRecv += dl.bytesReceived;
+        }
+        if (totalSize > 0)
+            updateProgress(totalRecv / totalSize);
+        else
+            updateProgress(-1);
         let msg = {command:"show-downloads",
                    downloads:dls,
                    auto:ids,
                    options:options};
         await browser.runtime.sendMessage(msg).then(ignore, ignore);
+        resetAlarm(options, dls);
     }
     await browser.downloads.search(query).then(show, onError);
+}
+
+async function resetAlarm(options, dls) {
+    let running = false;
+    for (let dl of dls)
+        if (dl.state == "in_progress" || dl.state == "interrupted") {
+            running = true;
+            break;
+        }
+    if (options.monitorInterval && running) {
+        let pim = options.monitorInterval / 60.0;
+        browser.alarms.get(alarmMonitor).then(async (alarm) => {
+            if (!alarm) {
+                if (options.debug)
+                    console.debug("create alarm: " + alarmMonitor +
+                                  " period: " + pim + " minutes");
+                browser.alarms.create(alarmMonitor,
+                                            {periodInMinutes:pim});
+            }
+        });
+    } else {
+        if (options.debug)
+            console.debug("clear alarm: " + alarmMonitor);
+        browser.alarms.clear(alarmMonitor);
+    }
 }
 
 async function reloadOptions(options) {
@@ -96,6 +228,7 @@ function basename(path) {
     return path.replace(/^.*[\\\/]/, '');
 }
 
+// Process requests from UI
 browser.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
     let options = await getSavedOptions();
     if (options.debug) {
@@ -247,8 +380,8 @@ browser.alarms.onAlarm.addListener(async (alarmInfo) => {
     if (!alarmInfo.name.startsWith(alarmPrefix))
         return;
     if (alarmInfo.name == alarmMonitor) {
-        if (options.logEvents)
-            console.info("autoresume: update download rates");
+        if (options.debug)
+            console.debug("autoresume: update download rates");
         let ids = await getSavedIds(options);
         await reloadDownloads(options, ids);
         return;
@@ -279,20 +412,21 @@ browser.alarms.onAlarm.addListener(async (alarmInfo) => {
     });
 });
 
+function redisplay() {
+    getSavedOptions().then((options) => {
+        getSavedIds(options).then((ids) => {
+            reloadDownloads(options, ids);
+        });
+    });
+}
+
 // Popup script creates a port when it starts up.
 // We use its life cycle to update and clean up as needed.
 browser.runtime.onConnect.addListener((port) => {
     if (port.name === alarmPopup) {
         // console.log("popup created");
-        port.onDisconnect.addListener(() => {
-            // console.log("popup died");
-            browser.alarms.clear(alarmMonitor);
-            return true;
-        });
-        getSavedOptions().then((options) => {
-            getSavedIds(options).then((ids) => {
-                reloadDownloads(options, ids);
-            });
-        });
+        redisplay();
     }
 });
+
+redisplay();
