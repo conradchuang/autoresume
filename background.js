@@ -12,6 +12,9 @@ const notificationId = "Auto Resume Notification";
 // Get logo for compositing with progress icon
 const logoImage = new Image();
 logoImage.src = "icons/autoresume-48.png";
+const pctFmt = new Intl.NumberFormat(undefined, {
+                                        style: "percent",
+                                        maximumFractionDigits: 0});
 
 // Color handling routines
 function hexToHsl(hex) {
@@ -88,7 +91,9 @@ function drawIcon(progress) {
         ctx.globalCompositeOperation = "destination-in";
         ctx.drawImage(logoImage, 0, 0, width, height);
         ctx.globalCompositeOperation = "source-over";
-    }
+        browser.action.setTitle({title: "Downloads: "+pctFmt.format(progress)});
+    } else
+        browser.action.setTitle({title: ""});
 
     // 5. Extract pixel data and update icon
     const imageData = ctx.getImageData(0, 0, width, height);
