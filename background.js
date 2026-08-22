@@ -91,7 +91,8 @@ function drawIcon(progress) {
         ctx.globalCompositeOperation = "destination-in";
         ctx.drawImage(logoImage, 0, 0, width, height);
         ctx.globalCompositeOperation = "source-over";
-        browser.action.setTitle({title: "Downloads: "+pctFmt.format(progress)});
+        browser.action.setTitle({title: "Auto Resume Downloads: " +
+                                        pctFmt.format(progress)});
     } else
         browser.action.setTitle({title: ""});
 
