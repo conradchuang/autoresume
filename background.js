@@ -68,6 +68,10 @@ function drawIcon(progress) {
     const height = logoImage.height;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
+    // Because the icon arrow does not occupy the whole height,
+    // we limit (approximately) the part of the icon that we modify
+    const minF = 0.15;
+    const maxF = 0.9;
 
     // Get the alternate color.  Should get the color from
     // the image, but we "know" the correct color.
@@ -82,8 +86,8 @@ function drawIcon(progress) {
 
     if (progress >= 0) {
         // 2. Draw the progress fill draining from top to bottom
-        const fillHeight = height * (1.0 - progress);
-        const fillY = height - fillHeight;
+        const fillHeight = height * (maxF - minF) * (1.0 - progress);
+        const fillY = height * maxF - fillHeight;
         ctx.fillStyle = altColor;
         ctx.fillRect(0, fillY, width, fillHeight);
 
@@ -312,13 +316,6 @@ browser.downloads.onCreated.addListener(async (dl) => {
         console.debug(dl);
     }
     let ids = await getSavedIds(options);
-    /*
-    // TODO: This should already have happened in getSavedIds
-    let dlId = dl.id.toString();
-    ids[dlId] = options.auto;
-    if (options.auto)
-        await browser.storage.local.set({autoresume:ids});
-    */
     await reloadDownloads(options, ids);
 });
 
