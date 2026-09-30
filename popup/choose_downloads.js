@@ -56,88 +56,24 @@ function showDownloads(downloads, dlInfo, options) {
     let count = 0;
     for (let dl of downloads) {
         let dlId = dl.id.toString();
+        let info = dlInfo[dlId];
+        if (!info)
+            continue;
         // If download is not in progress and cannot be resumed,
         // we do not bother to display it.
-        if (dl.state != "in_progress" && !dl.canResume)
-            continue;
-        let row = document.createElement("div");
-        row.className = "download-row";
-        activeDownloads.appendChild(row);
-        let status = document.createElement("div");
-        status.className = "download-status";
-        let checkbox = document.createElement("input");
-        checkbox.setAttribute("type", "checkbox");
-        checkbox.value = dlId;
-        checkbox.className = "autoresume";
-        checkbox.checked = dlInfo[dlId].auto;
-        checkbox.addEventListener("change", downloadCB);
-        status.appendChild(checkbox);
-        let img = document.createElement("img");
-        img.className = "download-state";
-        if (dl.state == "in_progress")
-            img.src = "../icons/status-running.png";
-        else
-            img.src = "../icons/status-stopped.png";
-        status.appendChild(img);
-        row.appendChild(status);
-        let filename = dl.filename.replace(/^.*[\\\/]/, '');
-        if (options.monitorInterval) {
-            let label = document.createElement("div");
-            label.className = "download-label";
-            let fn = document.createElement("div");
-            fn.textContent = filename;
-            fn.className = "download-filename";
-            label.appendChild(fn);
-            // Estimate the download rate and time remaining
-            // using the overall rate so far
-            let now = new Date();
-            let start = new Date(dlInfo[dlId].initTime);
-            let dlTime = (now - start) / 1000;
-            let dlRate = (dl.bytesReceived - dlInfo[dlId].initSize) / dlTime;
-                            // B/sec
-            let rate = "";
-            if (dlRate > 1000000)
-                rate += (dlRate / 1000000).toFixed(1) + " MB/s";
-            else if (dlRate > 1000)
-                rate += (dlRate / 1000).toFixed(0) + " kB/s";
-            else
-                rate += dlRate.toFixed(0) + " B/s";
-            let msg = "";
-            if (dl.totalBytes && dl.totalBytes > 0) {
-                let bytesLeft = dl.totalBytes - dl.bytesReceived;
-                let secondsLeft = Math.trunc(bytesLeft / dlRate);
-                let minutesLeft = Math.trunc(secondsLeft / 60);
-                let hoursLeft = Math.trunc(minutesLeft / 60);
-                let rem = "";
-                if (hoursLeft) {
-                    rem += hoursLeft + "h ";
-                    minutesLeft -= hoursLeft * 60;
-                }
-                if (minutesLeft)
-                    rem += minutesLeft + "m ";
-                if (!rem)
-                    rem = secondsLeft + "s ";
-                rem += "left";
-                let pct = Math.round(dl.bytesReceived / dl.totalBytes * 100);
-                let ru = displayUnit(dl.bytesReceived);
-                let recv = displaySize(dl.bytesReceived, ru.divisor);
-                let tu = displayUnit(dl.totalBytes);
-                let total = displaySize(dl.totalBytes, tu.divisor);
-                msg = rem + " \u2013 " + recv + ru.unit + " of " +
-                      total + tu.unit + ", " + pct + "% @ " + rate;
-            } else
-                msg = rate;
-            let rem = document.createElement("div");
-            rem.textContent = msg;
-            rem.className = "download-rate";
-            label.appendChild(rem);
-            row.appendChild(label);
-        } else {
-            let label = document.createElement("label");
-            label.textContent = filename;
-            row.appendChild(label);
+        if (dl.state == "in_progress") {
+            let row = buildDownloadInProgress(info, dlId, dl);
+            activeDownloads.appendChild(row);
+            count += 1;
+        } else if (dl.state == "complete") {
+            let row = buildDownloadComplete(info, dlId, dl);
+            activeDownloads.appendChild(row);
+            count += 1;
+        } else if (dl.state == "interrupted") {
+            let row = buildDownloadInterrupted(info, dlId, dl);
+            activeDownloads.appendChild(row);
+            count += 1;
         }
-        count += 1;
     }
     if (count == 0) {
         let row = document.createElement("div");
@@ -145,6 +81,136 @@ function showDownloads(downloads, dlInfo, options) {
         row.className = "download-row";
         activeDownloads.appendChild(row);
     }
+}
+
+function buildStatus(info, dlId, resumable, state_img) {
+    let row = document.createElement("div");
+    row.className = "download-row";
+    let status = document.createElement("div");
+    status.className = "download-status";
+    let checkbox = document.createElement("input");
+    checkbox.setAttribute("type", "checkbox");
+    checkbox.value = dlId;
+    checkbox.className = "autoresume";
+    if (resumable)
+        checkbox.checked = info.auto;
+    else {
+        checkbox.checked = false;
+        checkbox.disabled = true;
+    }
+    checkbox.addEventListener("change", downloadCB);
+    status.appendChild(checkbox);
+    let img = document.createElement("img");
+    img.className = "download-state";
+    img.src = state_img;
+    status.appendChild(img);
+    row.appendChild(status);
+    return row;
+}
+
+function buildFileInfo(dl) {
+    let filename = dl.filename.replace(/^.*[\\\/]/, '');
+    let label = document.createElement("div");
+    label.className = "download-label";
+    let fn = document.createElement("div");
+    fn.textContent = filename;
+    fn.className = "download-filename";
+    label.appendChild(fn);
+    return label;
+}
+
+function rateToTime(bytes, rate) {
+    let secondsLeft = Math.trunc(bytes / rate);
+    let minutesLeft = Math.trunc(secondsLeft / 60);
+    let hoursLeft = Math.trunc(minutesLeft / 60);
+    let t = "";
+    if (hoursLeft) {
+        t += hoursLeft + "h ";
+        minutesLeft -= hoursLeft * 60;
+    }
+    if (minutesLeft)
+        t += minutesLeft + "m ";
+    if (!t)
+        t = secondsLeft + "s ";
+    return t;
+}
+
+function buildTimeInfo(initTime, initSize, curTime, curSize, targetSize) {
+    let dlTime = (curTime - initTime) / 1000;
+    let dlRate = (curSize - initSize) / dlTime;    // B/sec
+    let rate = "";
+    if (dlRate > 1000000)
+        rate += (dlRate / 1000000).toFixed(1) + " MB/s";
+    else if (dlRate > 1000)
+        rate += (dlRate / 1000).toFixed(0) + " kB/s";
+    else
+        rate += dlRate.toFixed(0) + " B/s";
+    if (!targetSize)
+        return rate;
+    let msg;
+    if (targetSize > curSize) {
+        // Still downloading
+        let rem = rateToTime(targetSize - curSize, dlRate) + "left";
+        let pct = Math.round(curSize / targetSize * 100);
+        let ru = displayUnit(curSize);
+        let recv = displaySize(curSize, ru.divisor);
+        let tu = displayUnit(targetSize);
+        let total = displaySize(targetSize, tu.divisor);
+        msg = rem + " \u2013 " + recv + ru.unit + " of " +
+                  total + tu.unit + ", " + pct + "% @ " + rate;
+    } else {
+        msg = "downloaded in " + rateToTime(targetSize, dlRate);
+    }
+    let ti = document.createElement("div");
+    ti.textContent = msg;
+    ti.className = "download-rate";
+    return ti;
+}
+
+function buildDownloadInProgress(info, dlId, dl) {
+    let row = buildStatus(info, dlId, info.auto,
+                          "../icons/status-running.png");
+    let label = buildFileInfo(dl);
+    // img.src = "../icons/status-stopped.png";
+    // Estimate the download rate and time remaining
+    // using the overall rate so far
+    let now = new Date();
+    let start = new Date(info.initTime);
+    let ti = buildTimeInfo(start, info.initSize,
+                           now, dl.bytesReceived, dl.totalBytes);
+    label.appendChild(ti);
+    row.appendChild(label);
+    return row;
+}
+
+function buildDownloadComplete(info, dlId, dl) {
+    let row = buildStatus(info, dlId, false,
+                          "../icons/autoresume-96.png");
+    let label = buildFileInfo(dl);
+    // Calculate the download rate and time spent
+    let end = new Date(info.endTime);
+    let start = new Date(info.initTime);
+    let ti = buildTimeInfo(start, info.initSize,
+                           end, dl.bytesReceived, dl.totalBytes);
+    label.appendChild(ti);
+    row.appendChild(label);
+    return row;
+}
+
+function buildDownloadInterrupted(info, dlId, dl) {
+    let row = buildStatus(info, dlId, dl.canResume,
+                          "../icons/status-stopped.png");
+    let label = buildFileInfo(dl);
+    // img.src = "../icons/status-stopped.png";
+    // Estimate the download rate and time remaining
+    // using the overall rate so far
+    let end = new Date(info.interruptTime);
+    let start = new Date(info.initTime);
+    let ti = buildTimeInfo(start, info.initSize,
+                           end, dl.bytesReceived, dl.totalBytes);
+    label.appendChild(ti);
+    row.appendChild(label);
+    return row;
 }
 
 // console.debug("loading");

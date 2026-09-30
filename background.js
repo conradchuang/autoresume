@@ -139,22 +139,25 @@ async function getSavedIds(options) {
     let ids = result.autoresume;
     let dls = await browser.downloads.search({});
     let changed = false;
-    // Remove all no-longer-present or complete downloads
+    // Remove all no-longer-present downloads
     for (let dlId in ids) {
         let dl = dls.find((d) => d.id.toString() == dlId);
-        if (!dl || dl.state == "complete") {
+        if (!dl) {
             delete ids[dlId];
             changed = true;
         }
     }
-    // Add any new downloads if automatic-resume is on
+    // Add any new downloads
     for (let dl of dls) {
         if (dl.state != "complete") {
             let dlId = dl.id.toString();
             if (!(dlId in ids) || ids[dlId].auto === undefined) {
+                // Convert old version data to new version
                 ids[dlId] = { auto: options.auto,
                               initTime: dl.startTime,
-                              initSize: dl.bytesReceived };
+                              initSize: dl.bytesReceived,
+                              endTime: null,
+                              interruptTime: null };
                 changed = true;
             }
         }
@@ -328,16 +331,21 @@ browser.downloads.onChanged.addListener(async (dlDelta) => {
                      dlDelta.id + ": " +
                      dlDelta.state.previous + " -> " +
                      dlDelta.state.current);
+    let ids = await getSavedIds(options);
+    let dlId = dlDelta.id.toString();
     if (dlDelta.state.current == "complete") {
         // Remove from autoresume list
-        let ids = await getSavedIds(options);
-        let dlId = dlDelta.id.toString();
         if (dlId in ids) {
-            delete ids[dlId];
+            ids[dlId].endTime = new Date().toISOString();
+            ids[dlId].interruptTime = null;
             await browser.storage.local.set({autoresume:ids});
         }
         await reloadDownloads(options);
     } else if (dlDelta.state.current == "interrupted") {
+        if (dlId in ids) {
+            ids[dlId].interruptTime = new Date().toISOString();
+            await browser.storage.local.set({autoresume:ids});
+        }
         // If a download is interrupted, see if we can restart it
         let interval = options.interval / 60.0;
         let name = alarmPrefix + dlDelta.id.toString();
@@ -372,6 +380,11 @@ browser.downloads.onChanged.addListener(async (dlDelta) => {
                 if (options.logEvents)
                     console.log("autoresume: " + msg);
             });
+        }
+    } else if (dlDelta.state.current == "in_progress") {
+        if (dlId in ids && ids[dlId].interruptTime) {
+            ids[dlId].interruptTime = null;
+            await browser.storage.local.set({autoresume:ids});
         }
     }
 });
