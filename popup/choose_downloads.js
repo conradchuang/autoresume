@@ -138,17 +138,17 @@ function rateToTime(bytes, rate) {
 function buildTimeInfo(initTime, initSize, curTime, curSize, targetSize) {
     let dlTime = (curTime - initTime) / 1000;
     let dlRate = (curSize - initSize) / dlTime;    // B/sec
-    let rate = "";
+    let rate = "@ ";
     if (dlRate > 1000000)
         rate += (dlRate / 1000000).toFixed(1) + " MB/s";
     else if (dlRate > 1000)
         rate += (dlRate / 1000).toFixed(0) + " kB/s";
     else
         rate += dlRate.toFixed(0) + " B/s";
-    if (!targetSize)
-        return rate;
     let msg;
-    if (targetSize > curSize) {
+    if (!targetSize)
+        msg = rate;
+    else if (targetSize > curSize) {
         // Still downloading
         let rem = rateToTime(targetSize - curSize, dlRate) + "left";
         let pct = Math.round(curSize / targetSize * 100);
@@ -157,9 +157,9 @@ function buildTimeInfo(initTime, initSize, curTime, curSize, targetSize) {
         let tu = displayUnit(targetSize);
         let total = displaySize(targetSize, tu.divisor);
         msg = rem + " \u2013 " + recv + ru.unit + " of " +
-                  total + tu.unit + ", " + pct + "% @ " + rate;
+                  total + tu.unit + ", " + pct + "% " + rate;
     } else {
-        msg = "downloaded in " + rateToTime(targetSize, dlRate);
+        msg = "downloaded in " + rateToTime(targetSize, dlRate) + " " + rate;
     }
     let ti = document.createElement("div");
     ti.textContent = msg;
@@ -190,8 +190,11 @@ function buildDownloadComplete(info, dlId, dl) {
     // Calculate the download rate and time spent
     let end = new Date(info.endTime);
     let start = new Date(info.initTime);
+    // We use dl.bytesReceived as the target size since Firefox
+    // does not seem to guarantee that dl.totalBytes is actually
+    // the number of bytes to read.
     let ti = buildTimeInfo(start, info.initSize,
-                           end, dl.bytesReceived, dl.totalBytes);
+                           end, dl.bytesReceived, dl.bytesReceived);
     label.appendChild(ti);
     row.appendChild(label);
     return row;
@@ -204,7 +207,7 @@ function buildDownloadInterrupted(info, dlId, dl) {
     // img.src = "../icons/status-stopped.png";
     // Estimate the download rate and time remaining
     // using the overall rate so far
-    let end = new Date(info.interruptTime);
+    let end = new Date(info.endTime);
     let start = new Date(info.initTime);
     let ti = buildTimeInfo(start, info.initSize,
                            end, dl.bytesReceived, dl.totalBytes);

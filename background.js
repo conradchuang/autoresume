@@ -156,8 +156,7 @@ async function getSavedIds(options) {
                 ids[dlId] = { auto: options.auto,
                               initTime: dl.startTime,
                               initSize: dl.bytesReceived,
-                              endTime: null,
-                              interruptTime: null };
+                              endTime: null };
                 changed = true;
             }
         }
@@ -337,13 +336,12 @@ browser.downloads.onChanged.addListener(async (dlDelta) => {
         // Remove from autoresume list
         if (dlId in ids) {
             ids[dlId].endTime = new Date().toISOString();
-            ids[dlId].interruptTime = null;
             await browser.storage.local.set({autoresume:ids});
         }
         await reloadDownloads(options);
     } else if (dlDelta.state.current == "interrupted") {
         if (dlId in ids) {
-            ids[dlId].interruptTime = new Date().toISOString();
+            ids[dlId].endTime = new Date().toISOString();
             await browser.storage.local.set({autoresume:ids});
         }
         // If a download is interrupted, see if we can restart it
@@ -382,8 +380,8 @@ browser.downloads.onChanged.addListener(async (dlDelta) => {
             });
         }
     } else if (dlDelta.state.current == "in_progress") {
-        if (dlId in ids && ids[dlId].interruptTime) {
-            ids[dlId].interruptTime = null;
+        if (dlId in ids && ids[dlId].endTime) {
+            ids[dlId].endTime = null;
             await browser.storage.local.set({autoresume:ids});
         }
     }
