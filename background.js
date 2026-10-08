@@ -148,13 +148,26 @@ async function getSavedIds(options) {
         }
     }
     // Add any new downloads
+    let now = new Date().getTime();
     for (let dl of dls) {
         if (dl.state != "complete") {
             let dlId = dl.id.toString();
             if (!(dlId in ids) || ids[dlId].auto === undefined) {
+                // For inexplicable reasons, sometimes the download
+                // start time is in the future.  We just assume
+                // that it started now.
+                let start = dl.startTime;
+                if (start > now) {
+                    if (options.debug) {
+                        console.debug("autoresume: future download " +
+                                      "start time: " + new Date(start));
+                        console.debug("autoresume: now: " + new Date(now));
+                    }
+                    start = now;
+                }
                 // Convert old version data to new version
                 ids[dlId] = { auto: options.auto,
-                              initTime: dl.startTime,
+                              initTime: start,
                               initSize: dl.bytesReceived,
                               endTime: null };
                 changed = true;
