@@ -92,11 +92,13 @@ function buildStatus(info, dlId, resumable, state_img) {
     checkbox.setAttribute("type", "checkbox");
     checkbox.value = dlId;
     checkbox.className = "autoresume";
-    if (resumable)
+    if (resumable) {
         checkbox.checked = info.auto;
-    else {
+        checkbox.style.visibility = "visible";
+    } else {
         checkbox.checked = false;
         checkbox.disabled = true;
+        checkbox.style.visibility = "hidden";
     }
     checkbox.addEventListener("change", downloadCB);
     status.appendChild(checkbox);
