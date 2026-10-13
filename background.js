@@ -142,7 +142,7 @@ async function getSavedIds(options) {
     // Remove all no-longer-present downloads
     for (let dlId in ids) {
         let dl = dls.find((d) => d.id.toString() == dlId);
-        if (!dl) {
+        if (!dl || ids[dlId].endTime || dl.totalBytes != ids[dlId].targetSize) {
             delete ids[dlId];
             changed = true;
         }
@@ -153,22 +153,16 @@ async function getSavedIds(options) {
         if (dl.state != "complete") {
             let dlId = dl.id.toString();
             if (!(dlId in ids) || ids[dlId].auto === undefined) {
-                // For inexplicable reasons, sometimes the download
-                // start time is in the future.  We just assume
-                // that it started now.
-                let start = dl.startTime;
-                if (start > now) {
-                    if (options.debug) {
-                        console.debug("autoresume: future download " +
-                                      "start time: " + new Date(start));
-                        console.debug("autoresume: now: " + new Date(now));
-                    }
-                    start = now;
-                }
-                // Convert old version data to new version
+                // Note that we do _not_ use dl.startTime since
+                // that refers to the start time for the active
+                // connection and not the entire download, while
+                // dl.bytesReceived refers to byte count for the
+                // entire download. We estimate the download rate by
+                // observing what happens after we take this snapshot.
                 ids[dlId] = { auto: options.auto,
-                              initTime: start,
+                              initTime: now,
                               initSize: dl.bytesReceived,
+                              targetSize: dl.totalBytes,
                               endTime: null };
                 changed = true;
             }

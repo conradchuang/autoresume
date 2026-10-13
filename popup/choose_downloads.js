@@ -177,8 +177,8 @@ function buildDownloadInProgress(info, dlId, dl) {
     // Estimate the download rate and time remaining
     // using the overall rate so far
     let now = new Date();
-    let start = new Date(info.initTime);
-    let ti = buildTimeInfo(start, info.initSize,
+    let initTime = new Date(info.initTime);
+    let ti = buildTimeInfo(initTime, info.initSize,
                            now, dl.bytesReceived, dl.totalBytes);
     label.appendChild(ti);
     row.appendChild(label);
@@ -191,11 +191,11 @@ function buildDownloadComplete(info, dlId, dl) {
     let label = buildFileInfo(dl);
     // Calculate the download rate and time spent
     let end = new Date(info.endTime);
-    let start = new Date(info.initTime);
+    let initTime = new Date(info.initTime);
     // We use dl.bytesReceived as the target size since Firefox
     // does not seem to guarantee that dl.totalBytes is actually
     // the number of bytes to read.
-    let ti = buildTimeInfo(start, info.initSize,
+    let ti = buildTimeInfo(initTime, info.initSize,
                            end, dl.bytesReceived, dl.bytesReceived);
     label.appendChild(ti);
     row.appendChild(label);
@@ -210,8 +210,8 @@ function buildDownloadInterrupted(info, dlId, dl) {
     // Estimate the download rate and time remaining
     // using the overall rate so far
     let end = new Date(info.endTime);
-    let start = new Date(info.initTime);
-    let ti = buildTimeInfo(start, info.initSize,
+    let initTime = new Date(info.initTime);
+    let ti = buildTimeInfo(initTime, info.initSize,
                            end, dl.bytesReceived, dl.totalBytes);
     label.appendChild(ti);
     row.appendChild(label);
