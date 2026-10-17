@@ -83,13 +83,14 @@ function showDownloads(downloads, dlInfo, options) {
     }
 }
 
-function buildStatus(info, dlId, resumable, state_img) {
+function buildStatus(info, dlId, resumable, state_img, state_text) {
     let row = document.createElement("div");
     row.className = "download-row";
     let status = document.createElement("div");
     status.className = "download-status";
     let checkbox = document.createElement("input");
     checkbox.setAttribute("type", "checkbox");
+    checkbox.setAttribute("title", "Check to resume on interruption");
     checkbox.value = dlId;
     checkbox.className = "autoresume";
     if (resumable) {
@@ -105,6 +106,7 @@ function buildStatus(info, dlId, resumable, state_img) {
     let img = document.createElement("img");
     img.className = "download-state";
     img.src = state_img;
+    img.setAttribute("title", state_text);
     status.appendChild(img);
     row.appendChild(status);
     return row;
@@ -171,7 +173,7 @@ function buildTimeInfo(initTime, initSize, curTime, curSize, targetSize) {
 
 function buildDownloadInProgress(info, dlId, dl) {
     let row = buildStatus(info, dlId, info.auto,
-                          "../icons/status-running.png");
+                          "../icons/status-running.png", "running");
     let label = buildFileInfo(dl);
     // img.src = "../icons/status-stopped.png";
     // Estimate the download rate and time remaining
@@ -187,7 +189,7 @@ function buildDownloadInProgress(info, dlId, dl) {
 
 function buildDownloadComplete(info, dlId, dl) {
     let row = buildStatus(info, dlId, false,
-                          "../icons/autoresume-96.png");
+                          "../icons/autoresume-96.png", "complete");
     let label = buildFileInfo(dl);
     // Calculate the download rate and time spent
     let end = new Date(info.endTime);
@@ -204,7 +206,7 @@ function buildDownloadComplete(info, dlId, dl) {
 
 function buildDownloadInterrupted(info, dlId, dl) {
     let row = buildStatus(info, dlId, dl.canResume,
-                          "../icons/status-stopped.png");
+                          "../icons/status-stopped.png", "stopped");
     let label = buildFileInfo(dl);
     // img.src = "../icons/status-stopped.png";
     // Estimate the download rate and time remaining
