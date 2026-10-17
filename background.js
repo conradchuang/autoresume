@@ -142,7 +142,11 @@ async function getSavedIds(options) {
     // Remove all no-longer-present downloads
     for (let dlId in ids) {
         let dl = dls.find((d) => d.id.toString() == dlId);
-        if (!dl || ids[dlId].endTime || dl.totalBytes != ids[dlId].targetSize) {
+        // Delete saved info if:
+        // 1. download is no longer in history, so info is dangling
+        // 2. info has the same id but is from a previous session
+        if (!dl || (dl.state != "complete" && ids[dlId].endTime) ||
+            dl.totalBytes != ids[dlId].targetSize) {
             delete ids[dlId];
             changed = true;
         }
