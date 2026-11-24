@@ -119,6 +119,7 @@ function buildFileInfo(dl) {
     let fn = document.createElement("div");
     fn.textContent = filename;
     fn.className = "download-filename";
+    fn.setAttribute("title", "From host " + new URL(dl.url).hostname);
     label.appendChild(fn);
     return label;
 }
