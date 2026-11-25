@@ -119,9 +119,46 @@ function buildFileInfo(dl) {
     let fn = document.createElement("div");
     fn.textContent = filename;
     fn.className = "download-filename";
-    fn.setAttribute("title", "From host " + new URL(dl.url).hostname);
+    fn.setAttribute("title", "From " + new URL(dl.url).hostname);
+    fn.addEventListener("contextmenu", event => {
+        event.preventDefault();
+        const menu = document.querySelector("#download-menu");
+        menu.hidden = false;
+        menu.style.position = "fixed";
+        menu.style.left = `${event.clientX}px`;
+        menu.style.top = `${event.clientY}px`;
+        menu.download = dl;
+        menu.replaceChildren();
+        _addMenuItem(menu, "copy-link", "Copy Download URL", event => {
+            console.log("copy link");
+            _closeDownloadMenu(menu);
+        });
+        _addMenuItem(menu, "copy-referer", "Copy Referer URL", event => {
+            console.log("copy referer");
+            _closeDownloadMenu(menu);
+        });
+        _addMenuItem(menu, "remove", "Remove", event => {
+            console.log("remove");
+            browser.downloads.erase({id: dl.id});
+            _closeDownloadMenu(menu);
+        });
+    });
     label.appendChild(fn);
     return label;
+}
+
+function _addMenuItem(menu, action, label, callback) {
+    let item = document.createElement("button");
+    item.className = "download-menu-item";
+    item.dataset.action = action;
+    item.textContent = label;
+    item.addEventListener("click", callback);
+    menu.appendChild(item);
+}
+
+function _closeDownloadMenu(menu) {
+    menu.hidden = true;
+
 }
 
 function rateToTime(bytes, rate) {

@@ -56,6 +56,31 @@ body {
 	filter: opacity(60%);
 }
 
+.download-menu {
+	position: fixed;
+	border-radius: 5px;
+	border-style: solid;
+	border-width: 1px;
+	border-color: gray;
+	background-color: black;
+	padding: 5px;
+}
+
+.download-menu-item {
+	display: block;
+	width: 100%;
+	text-align:left;
+	border-radius: 5px;
+	border: none;
+	padding: 5px;
+	margin: 2px;
+	background-color: black;
+}
+
+.download-menu-item:hover {
+	background-color: rgb(64,64,64);
+}
+
 .hidden {
 	display: none;
 }
